@@ -4,9 +4,12 @@
            [clojure.string :as string]
            [geo.poly :as poly]
            [geo.spatial :as spatial])
-  (import (org.joda.time.base BaseDateTime))
+  (import (java.util.zip GZIPInputStream)
+          (org.joda.time.base BaseDateTime))
   (:gen-class)
   (:require [clojure.java.io :as io]))
+
+(set! *warn-on-reflection* true)
 
 
 (def datetime-fmt (timefmt/formatter-local "YYYY/MM/dd HH:mm:ss.SSS"))
@@ -26,9 +29,19 @@
    :heading (Double/parseDouble (csv 14))})
 
 
+(defn gzip-reader [path]
+  (io/reader (GZIPInputStream. (io/input-stream path))))
+
+
+(defn log-reader [^String path]
+  (if (.endsWith path ".gz")
+    (gzip-reader path)
+    (io/reader path)))
+
+
 (defn read-log [log]
   (->> log
-       io/reader
+       log-reader
        line-seq
        (map csv/read-csv)
        (map first)

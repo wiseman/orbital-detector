@@ -1,6 +1,7 @@
 (ns com.lemondronor.orbital-detector.log2kml
   "Converts a PlanePlotter log to KML."
   (:require [com.lemondronor.orbital-detector :as orbdet]
+            [com.lemonodor.gflags :as gflags]
             [clojure.data.xml :as xml]
             [clojure.string :as string])
   (:import ())
@@ -9,9 +10,14 @@
 (set! *warn-on-reflection* true)
 
 
+(gflags/define-list "icaos"
+  []
+  "Comma separated list of ICAOs to filter.")
+
+
 (defn has-position? [r]
-  (and (>= (Math/abs (:lat (:position r))) 0.1)
-       (>= (Math/abs (:lon (:position r))) 0.1)))
+  (and (>= (Math/abs ^double (:lat (:position r))) 0.1)
+       (>= (Math/abs ^double (:lon (:position r))) 0.1)))
 
 
 (defn random-rgb []
@@ -26,6 +32,15 @@
 
 (def path-colors
   [
+   0xA6CEE3
+   0x1F78B4
+   0xB2DF8A
+   0x33A02C
+   0xFB9A99
+   0xE31A1C
+   0xFDBF6F
+   0xFF7F00
+   0xCAB2D6
    0xFF0000
    0x00FF00
    0x0000FF
@@ -39,6 +54,10 @@
    0xF17CB0 ;; (pink)
    0xB2912F ;; (brown)
    ])
+
+
+(defn feet-to-meters [f]
+  (* f 0.3048))
 
 
 (defn reports2path [rs]
@@ -72,20 +91,28 @@
                          ","
                          (:lat (:position %))
                          ","
-                         (:altitude %))
+                         (feet-to-meters (:altitude %)))
                    rs))]]])
         groups)]])))
 
 
-(defn pv [x]
-  (println x)
-  x)
+(defn filter-icaos [icaos records]
+  (if (seq icaos)
+    (let [icaos (set icaos)]
+      (filter #(icaos (:icao %)) records))
+    records))
+
+
+(defn pv [msg s]
+  (println msg (take 3 s))
+  s)
 
 
 (defn -main [& args]
-  (-> args
-      first
-      orbdet/read-log
-      reports2path
-      xml/emit-str
-      println))
+  (let [args (gflags/parse-flags (cons nil args))]
+    (->> args
+         (mapcat orbdet/read-log)
+         (filter-icaos (gflags/flags :icaos))
+         reports2path
+         xml/emit-str
+         println)))
