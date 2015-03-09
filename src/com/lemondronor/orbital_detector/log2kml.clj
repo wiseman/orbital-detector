@@ -3,7 +3,8 @@
   (:require [com.lemondronor.orbital-detector :as orbdet]
             [com.lemonodor.gflags :as gflags]
             [clojure.data.xml :as xml]
-            [clojure.string :as string])
+            [clojure.string :as string]
+            [geo.spatial :as spatial])
   (:import ())
   (:gen-class))
 
@@ -60,8 +61,45 @@
   (* f 0.3048))
 
 
+(defn coordinate [r]
+  (str (:lon (:position r))
+       ","
+       (:lat (:position r))
+       ","
+       (feet-to-meters (:altitude r))))
+
+
+(defn point [r]
+  (spatial/spatial4j-point
+   (:lat (:position r))
+   (:lon (:position r))))
+
+
+(defn distance [r1 r2]
+  (spatial/distance (point r1) (point r2)))
+
+
+(defn warn [& args]
+  (binding [*out* *err*]
+    (apply println args)))
+
+
+(defn filter-reasonable-speed [records]
+  (reverse
+   (reduce
+    (fn [reasonable r]
+      (let [d (distance r (first reasonable))]
+        (if (< d 30000.0)
+          (cons r reasonable)
+          (do
+            (warn "distance from" (first reasonable) "is" d "dropping" r)
+            reasonable))))
+    (list (first records))
+    (rest records))))
+
+
 (defn reports2path [rs]
-  (let [groups (group-by :icao (filter has-position? rs))
+  (let [groups (group-by :icao rs)
         colors (take (count groups) path-colors)]
     (xml/sexp-as-element
      [:kml {:xmlns "http://www.opengis.net/kml/2.2"}
@@ -87,12 +125,7 @@
             [:coordinates
              (string/join
               "\n"
-              (map #(str (:lon (:position %))
-                         ","
-                         (:lat (:position %))
-                         ","
-                         (feet-to-meters (:altitude %)))
-                   rs))]]])
+              (distinct (map coordinate (filter-reasonable-speed rs))))]]])
         groups)]])))
 
 
@@ -113,6 +146,7 @@
     (->> args
          (mapcat orbdet/read-log)
          (filter-icaos (gflags/flags :icaos))
+         (filter has-position?)
          reports2path
          xml/emit-str
          println)))
