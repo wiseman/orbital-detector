@@ -16,11 +16,6 @@
 (set! *warn-on-reflection* true)
 
 
-(gflags/define-string "extended-data"
-  nil
-  "CSV file containing extended aircraft data.")
-
-
 (def datetime-fmt (timefmt/formatter-local "YYYY/MM/dd HH:mm:ss.SSS"))
 
 

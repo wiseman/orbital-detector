@@ -4,7 +4,9 @@
    [clj-time.coerce :as timecoerce]
    [clj-time.core :as time]
    [clj-time.format :as timefmt]
+   [clojure.pprint :as pprint]
    [com.lemondronor.orbital-detector :as orbdet]
+   [com.lemondronor.orbital-detector.updatedb :as updatedb]
    [com.lemonodor.gflags :as gflags]
    [clojure.data.xml :as xml]
    [clojure.string :as string]
@@ -19,6 +21,45 @@
 (gflags/define-list "icaos"
   []
   "Comma separated list of ICAOs to filter.")
+
+
+(gflags/define-string "extended-data"
+  nil
+  "")
+
+
+(defn warn [& args]
+  (binding [*out* *err*]
+    (apply println args)))
+
+
+(def extended-data nil)
+
+
+(defn load-extended-data []
+  (alter-var-root
+   (var extended-data)
+   (fn [_]
+     (if-let [path (gflags/flags :extended-data)]
+       (into
+        {}
+        (map (fn [r] [(:ICAO r) r]) (updatedb/read-csv path)))
+       {}))))
+
+
+(defn registration [icao]
+  (let [r (:Registration (extended-data icao))]
+    (warn "Registration of" (pr-str icao) "is" r)
+    r))
+
+
+(defn agency [icao]
+  (:Agency (extended-data icao)))
+
+
+(defn type [icao]
+  (:Type (extended-data icao)))
+
 
 
 (defn has-position? [r]
@@ -67,11 +108,6 @@
 
 
 (defn coordinate [r]
-  (when (not (:altitude r))
-    (println "WOO")
-    (println r)
-    (flush)
-    (assert false))
   (str (:lon (:position r))
        ","
        (:lat (:position r))
@@ -87,11 +123,6 @@
 
 (defn distance [r1 r2]
   (spatial/distance (point r1) (point r2)))
-
-
-(defn warn [& args]
-  (binding [*out* *err*]
-    (apply println args)))
 
 
 (defn filter-speed [max-speed records]
@@ -146,7 +177,8 @@
   [:kml {:xmlns "http://www.opengis.net/kml/2.2"}
    [:Document
     [:name "Recent law enforcement aircraft tracks"]
-    [:description (str (count tracks) " aircraft")]
+    [:description
+     (str (count tracks) " sessions")]
     (map-indexed
      (fn [idx color]
        [:Style {:id (str "color" idx)}
@@ -167,7 +199,7 @@
   (let [r (first reports)]
     (string/join
      " "
-     [(or (:registration r) "Unknown")
+     [(or (:registration r) (registration (:icao r)) "Unknown")
       "-"
       (:icao r)
       "|"
@@ -180,7 +212,13 @@
   (let [r (first reports)]
     (string/join
      "\n"
-     [(str "Duration: "
+     [(if-let [agency (agency (:icao r))]
+        (str "Agency: " agency)
+        "")
+      (if-let [type (type (:icao r))]
+        (str "Type: " type)
+        "")
+      (str "Duration: "
            (time/in-minutes
             (time/interval
              (timecoerce/from-long (:timestamp r))
@@ -217,17 +255,22 @@
     records))
 
 
-(defn pv [msg s]
-  (println msg (take 3 s))
+(defn print-count [s]
+  (warn "sequence has" (count s) "items")
   s)
 
 
 (defn -main [& args]
   (let [args (gflags/parse-flags (cons nil args))]
+    (load-extended-data)
     (let [tracks (->> args
                       (mapcat orbdet/read-log)
                       (filter-icaos (gflags/flags :icaos))
                       (filter has-position?)
+                      (print-count)
+                      (partition-all 1000)
+                      (mapcat distinct)
+                      (print-count)
                       (group-by :icao)
                       (map second)
                       (map #(filter-speed 30000.0 %))
