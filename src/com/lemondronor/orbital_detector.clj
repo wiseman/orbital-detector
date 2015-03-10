@@ -1,27 +1,38 @@
 (ns com.lemondronor.orbital-detector
-  (require [clj-time.format :as timefmt]
-           [clojure.data.csv :as csv]
-           [clojure.string :as string]
-           [geo.poly :as poly]
-           [geo.spatial :as spatial])
-  (import (java.util.zip GZIPInputStream)
-          (org.joda.time.base BaseDateTime))
+  (require
+   [clj-time.coerce :as timecoerce]
+   [clj-time.format :as timefmt]
+   [clojure.data.csv :as csv]
+   [clojure.string :as string]
+   [com.lemonodor.gflags :as gflags]
+   [geo.poly :as poly]
+   [geo.spatial :as spatial])
+  (import
+   (java.util.zip GZIPInputStream)
+   (org.joda.time.base BaseDateTime))
   (:gen-class)
   (:require [clojure.java.io :as io]))
 
 (set! *warn-on-reflection* true)
 
 
+(gflags/define-string "extended-data"
+  nil
+  "CSV file containing extended aircraft data.")
+
+
 (def datetime-fmt (timefmt/formatter-local "YYYY/MM/dd HH:mm:ss.SSS"))
 
 
 (defn parse-log-csv [csv]
-  {:timestamp (.getMillis
-               ^BaseDateTime
+  {:timestamp (timecoerce/to-long
                (timefmt/parse
                 datetime-fmt (string/join " " [(csv 0) (csv 1)])))
    :icao (csv 3)
-   :registration (string/trim (csv 4))
+   :registration (let [r (string/trim (csv 4))]
+                   (if (pos? (count r))
+                     r
+                     nil))
    :altitude (Long/parseLong (csv 7))
    :position {:lat (Double/parseDouble (csv 9))
               :lon (Double/parseDouble (csv 10))}

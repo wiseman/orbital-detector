@@ -1,11 +1,16 @@
 (ns com.lemondronor.orbital-detector.log2kml
   "Converts a PlanePlotter log to KML."
-  (:require [com.lemondronor.orbital-detector :as orbdet]
-            [com.lemonodor.gflags :as gflags]
-            [clojure.data.xml :as xml]
-            [clojure.string :as string]
-            [geo.spatial :as spatial])
-  (:import ())
+  (:require
+   [clj-time.coerce :as timecoerce]
+   [clj-time.core :as time]
+   [clj-time.format :as timefmt]
+   [com.lemondronor.orbital-detector :as orbdet]
+   [com.lemonodor.gflags :as gflags]
+   [clojure.data.xml :as xml]
+   [clojure.string :as string]
+   [geo.spatial :as spatial])
+  (:import
+   ())
   (:gen-class))
 
 (set! *warn-on-reflection* true)
@@ -141,6 +146,7 @@
   [:kml {:xmlns "http://www.opengis.net/kml/2.2"}
    [:Document
     [:name "Recent law enforcement aircraft tracks"]
+    [:description (str (count tracks) " aircraft")]
     (map-indexed
      (fn [idx color]
        [:Style {:id (str "color" idx)}
@@ -153,11 +159,47 @@
     tracks]])
 
 
+
+(def datetime-fmt (timefmt/formatter-local "YYYY/MM/dd HH:mm"))
+
+
+(defn track-name [reports]
+  (let [r (first reports)]
+    (string/join
+     " "
+     [(or (:registration r) "Unknown")
+      "-"
+      (:icao r)
+      "|"
+      (timefmt/unparse
+       datetime-fmt
+       (timecoerce/from-long (:timestamp r)))])))
+
+
+(defn track-description [reports]
+  (let [r (first reports)]
+    (string/join
+     "\n"
+     [(str "Duration: "
+           (time/in-minutes
+            (time/interval
+             (timecoerce/from-long (:timestamp r))
+             (timecoerce/from-long (:timestamp (last reports)))))
+           " minutes")
+
+      (str
+       "Track length: "
+       (format "%.1f"
+               (/ (reduce + (map distance reports (next reports))) 1000.0))
+       " km")])))
+
+
 (defn kmltrack [idx reports]
   (let [icao (:icao (first reports))
         registration (:registration (first reports))]
     [:Placemark
-     [:name (str icao " - " registration)]
+     [:name (track-name reports)]
+     [:description (track-description reports)]
      [:styleUrl (str "#color" idx)]
      [:LineString
       [:tessellate 1]
@@ -190,6 +232,7 @@
                       (map second)
                       (map #(filter-speed 30000.0 %))
                       (mapcat #(partition-sessions 600000 %))
+                      (map distinct)
                       (filter #(> (count %) 10))
                       (map-indexed kmltrack))]
       (-> (kmldoc tracks)
