@@ -62,6 +62,11 @@
 
 
 (defn coordinate [r]
+  (when (not (:altitude r))
+    (println "WOO")
+    (println r)
+    (flush)
+    (assert false))
   (str (:lon (:position r))
        ","
        (:lat (:position r))
@@ -84,12 +89,12 @@
     (apply println args)))
 
 
-(defn filter-reasonable-speed [records]
+(defn filter-speed [max-speed records]
   (reverse
    (reduce
     (fn [reasonable r]
       (let [d (distance r (first reasonable))]
-        (if (< d 30000.0)
+        (if (< d max-speed)
           (cons r reasonable)
           (do
             (warn "distance from" (first reasonable) "is" d "dropping" r)
@@ -98,35 +103,69 @@
     (rest records))))
 
 
-(defn reports2path [rs]
-  (let [groups (group-by :icao rs)
-        colors (take (count groups) path-colors)]
-    (xml/sexp-as-element
-     [:kml {:xmlns "http://www.opengis.net/kml/2.2"}
-      [:Document
-       [:name "Recent law enforcement aircraft tracks"]
-       (map-indexed
-        (fn [idx color]
-          [:Style {:id (str "color" idx)}
-           [:LineStyle
-            [:color (rgb-hex color)]
-            [:width 4]]
-           [:PolyStyle
-            [:color "7f00ff00"]]])
-        colors)
-       (map-indexed
-        (fn [idx [icao rs]]
-          [:Placemark
-           [:name (str icao " - " (:registration (first rs)))]
-           [:styleUrl (str "#color" idx)]
-           [:LineString
-            [:tessellate 1]
-            [:altitudeMode "relativeToGround"]
-            [:coordinates
-             (string/join
-              "\n"
-              (distinct (map coordinate (filter-reasonable-speed rs))))]]])
-        groups)]])))
+(defn partition-between
+  "Splits coll into a lazy sequence of lists, with partition
+  boundaries between items where (f item1 item2) is true.
+  (partition-between = '(1 2 2 3 4 4 4 5)) =>
+  ((1 2) (2 3 4) (4) (4 5))"
+  [f coll]
+  (lazy-seq
+   (when-let [s (seq coll)]
+     (let [fst (first s)]
+       (if-let [rest-seq (next s)]
+         (if (f fst (first rest-seq))
+           (cons (list fst) (partition-between f rest-seq))
+           (let [rest-part (partition-between f rest-seq)]
+             (cons (cons fst (first rest-part)) (rest rest-part))))
+         (list (list fst)))))))
+
+
+(defn partition-between
+  [f coll]
+  (lazy-seq
+   (when-let [s (seq coll)]
+     (let [pairs-in-segment (take-while (fn [[a b]] (f a b)) (partition 2 1 s))
+           [segment reminder] (split-at (inc (count pairs-in-segment)) s)]
+       (cons segment
+             (partition-between f reminder))))))
+
+
+(defn partition-sessions [max-time-gap-ms records]
+  (partition-between
+   (fn [r1 r2]
+     (<= (- (:timestamp r2) (:timestamp r1)) max-time-gap-ms))
+   records))
+
+
+(defn kmldoc [tracks]
+  [:kml {:xmlns "http://www.opengis.net/kml/2.2"}
+   [:Document
+    [:name "Recent law enforcement aircraft tracks"]
+    (map-indexed
+     (fn [idx color]
+       [:Style {:id (str "color" idx)}
+        [:LineStyle
+         [:color (rgb-hex color)]
+         [:width 4]]
+        [:PolyStyle
+         [:color "7f00ff00"]]])
+     path-colors)
+    tracks]])
+
+
+(defn kmltrack [idx reports]
+  (let [icao (:icao (first reports))
+        registration (:registration (first reports))]
+    [:Placemark
+     [:name (str icao " - " registration)]
+     [:styleUrl (str "#color" idx)]
+     [:LineString
+      [:tessellate 1]
+      [:altitudeMode "relativeToGround"]
+      [:coordinates
+       (string/join
+        "\n"
+        (distinct (map coordinate reports)))]]]))
 
 
 (defn filter-icaos [icaos records]
@@ -143,10 +182,17 @@
 
 (defn -main [& args]
   (let [args (gflags/parse-flags (cons nil args))]
-    (->> args
-         (mapcat orbdet/read-log)
-         (filter-icaos (gflags/flags :icaos))
-         (filter has-position?)
-         reports2path
-         xml/emit-str
-         println)))
+    (let [tracks (->> args
+                      (mapcat orbdet/read-log)
+                      (filter-icaos (gflags/flags :icaos))
+                      (filter has-position?)
+                      (group-by :icao)
+                      (map second)
+                      (map #(filter-speed 30000.0 %))
+                      (mapcat #(partition-sessions 600000 %))
+                      (filter #(> (count %) 10))
+                      (map-indexed kmltrack))]
+      (-> (kmldoc tracks)
+          xml/sexp-as-element
+          xml/emit-str
+          println))))
