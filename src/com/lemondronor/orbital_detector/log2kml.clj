@@ -57,18 +57,14 @@
   (:Agency (extended-data icao)))
 
 
-(defn type [icao]
+(defn vehicle-type [icao]
   (:Type (extended-data icao)))
-
 
 
 (defn has-position? [r]
   (and (>= (Math/abs ^double (:lat (:position r))) 0.1)
        (>= (Math/abs ^double (:lon (:position r))) 0.1)))
 
-
-(defn random-rgb []
-  (map #(rand-int %) (repeat 3 255)))
 
 (defn rgb-hex [rgb]
   (str "7f" (string/join (map #(format "%02x" %) rgb))))
@@ -78,29 +74,30 @@
 
 
 (def path-colors
-  [
-   0xA6CEE3
-   0x1F78B4
-   0xB2DF8A
-   0x33A02C
-   0xFB9A99
-   0xE31A1C
-   0xFDBF6F
-   0xFF7F00
-   0xCAB2D6
-   0xFF0000
-   0x00FF00
-   0x0000FF
-   0xF15854 ;; (red))
-   0xB276B2 ;; (purple)
-   0xDECF3F ;; (yellow)
-   0x4D4D4D ;; (gray)
-   0x5DA5DA ;; (blue)
-   0xFAA43A ;; (orange)
-   0x60BD68 ;; (green)
-   0xF17CB0 ;; (pink)
-   0xB2912F ;; (brown)
-   ])
+  (cycle
+   [
+    0xA6CEE3
+    0x1F78B4
+    0xB2DF8A
+    0x33A02C
+    0xFB9A99
+    0xE31A1C
+    0xFDBF6F
+    0xFF7F00
+    0xCAB2D6
+    0xFF0000
+    0x00FF00
+    0x0000FF
+    0xF15854 ;; (red))
+    0xB276B2 ;; (purple)
+    0xDECF3F ;; (yellow)
+    0x4D4D4D ;; (gray)
+    0x5DA5DA ;; (blue)
+    0xFAA43A ;; (orange)
+    0x60BD68 ;; (green)
+    0xF17CB0 ;; (pink)
+    0xB2912F ;; (brown)
+    ]))
 
 
 (defn feet-to-meters [f]
@@ -173,12 +170,20 @@
    records))
 
 
-(defn kmldoc [tracks]
+(defn kmldoc [vehicle-groups tracks]
   [:kml {:xmlns "http://www.opengis.net/kml/2.2"}
    [:Document
     [:name "Recent law enforcement aircraft tracks"]
     [:description
-     (str (count tracks) " sessions")]
+     (str
+      (count vehicle-groups) " vehicles, "
+      (count tracks) " sessions, "
+      (format "%.1f km flown"
+              (/ (reduce
+                  +
+                  (for [[_ reports] vehicle-groups]
+                    (reduce + (map distance reports (next reports)))))
+                 1000.0)))]
     (map-indexed
      (fn [idx color]
        [:Style {:id (str "color" idx)}
@@ -187,7 +192,7 @@
          [:width 4]]
         [:PolyStyle
          [:color "7f00ff00"]]])
-     path-colors)
+     (take 100 path-colors))
     tracks]])
 
 
@@ -215,8 +220,8 @@
      [(if-let [agency (agency (:icao r))]
         (str "Agency: " agency)
         "")
-      (if-let [type (type (:icao r))]
-        (str "Type: " type)
+      (if-let [vtype (vehicle-type (:icao r))]
+        (str "Type: " vtype)
         "")
       (str "Duration: "
            (time/in-minutes
@@ -263,22 +268,23 @@
 (defn -main [& args]
   (let [args (gflags/parse-flags (cons nil args))]
     (load-extended-data)
-    (let [tracks (->> args
-                      (mapcat orbdet/read-log)
-                      (filter-icaos (gflags/flags :icaos))
-                      (filter has-position?)
-                      (print-count)
-                      (partition-all 1000)
-                      (mapcat distinct)
-                      (print-count)
-                      (group-by :icao)
-                      (map second)
-                      (map #(filter-speed 30000.0 %))
-                      (mapcat #(partition-sessions 600000 %))
-                      (map distinct)
-                      (filter #(> (count %) 10))
-                      (map-indexed kmltrack))]
-      (-> (kmldoc tracks)
+    (let [vehicle-groups (->> args
+                              (mapcat orbdet/read-log)
+                              (filter-icaos (gflags/flags :icaos))
+                              (filter has-position?)
+                              (print-count)
+                              (partition-all 1000)
+                              (mapcat distinct)
+                              (print-count)
+                              (group-by :icao))
+          kml-tracks (->> vehicle-groups
+                          (map second)
+                          (map #(filter-speed 30000.0 %))
+                          (mapcat #(partition-sessions 600000 %))
+                          (map distinct)
+                          (filter #(> (count %) 10))
+                          (map-indexed kmltrack))]
+      (-> (kmldoc vehicle-groups kml-tracks)
           xml/sexp-as-element
           xml/emit-str
           println))))
