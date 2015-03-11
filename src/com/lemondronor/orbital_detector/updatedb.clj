@@ -27,18 +27,11 @@
     Registration  - Registration code"
   (:require [clojure.data.csv :as csv]
             [clojure.java.io :as io]
-            [clojure.java.jdbc :as jdbc])
+            [clojure.java.jdbc :as jdbc]
+            [com.lemondronor.orbital-detector.basestationdb :as basestationdb])
   (:import ()))
 
 (set! *warn-on-reflection* true)
-
-
-(defn db-spec
-  "Returns the JDBC spec for an sqlite database at the specified path."
-  [path]
-  {:classname "org.sqlite.JDBC"
-   :subprotocol "sqlite"
-   :subname path})
 
 
 (defn read-csv
@@ -52,15 +45,6 @@
        (into {} (map vector columns row)))
      (repeat (map keyword (first csv)))
      (rest csv))))
-
-
-(defn find-aircraft
-  "Looks up an aircraft in the database by ICAO ID."
-  [db-con icao]
-  (first
-   (jdbc/query
-    db-con
-    ["SELECT * from AIRCRAFT WHERE ModeS = ?" icao])))
 
 
 (defn db-values [csv-rec]
@@ -81,36 +65,28 @@
   (assert (= (:Type csv-rec) (:icaotypecode db-rec)))
   (let [values (db-values csv-rec)]
     (println "---- with" values)
-    (jdbc/update!
-     db-conn
-     :Aircraft
-     values
-     ["ModeS = ?" (:ICAO csv-rec)])))
-
+    (basestationdb/update-aircraft! db-conn (:ICAO csv-rec) values)))
 
 
 (defn insert-aircraft! [db-conn csv-rec]
   (let [values (assoc (db-values csv-rec)
                       :modes (:ICAO csv-rec))]
     (println "INSERTING:" values)
-    (jdbc/insert!
-     db-conn
-     :Aircraft
-     values)))
+    (basestationdb/insert-aircraft! db-conn values)))
 
 
 (defn update-db! [db-spec csv-path]
   (let [csv (read-csv csv-path)]
-    (jdbc/with-db-connection [db-conn db-spec]
+    (jdbc/with-db-transaction [t-conn db-spec]
       (doseq [csv-rec csv]
-        (let [db-rec (find-aircraft db-conn (:ICAO csv-rec))]
+        (let [db-rec (basestationdb/find-aircraft t-conn (:ICAO csv-rec))]
           (if csv-rec
-            (update-aircraft! db-conn db-rec csv-rec)
-            (insert-aircraft! db-conn csv-rec)))))))
+            (update-aircraft! t-conn db-rec csv-rec)
+            (insert-aircraft! t-conn csv-rec)))))))
 
 
 
 (defn -main [& args]
   (let [csv-path (first args)
         db-path (second args)]
-    (update-db! (db-spec db-path) csv-path)))
+    (update-db! (basestationdb/db-spec db-path) csv-path)))
