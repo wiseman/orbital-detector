@@ -5,7 +5,7 @@
    [clj-time.core :as time]
    [clj-time.format :as timefmt]
    [clojure.pprint :as pprint]
-   [com.lemondronor.orbital-detector :as orbdet]
+   [com.lemondronor.orbital-detector.planeplotter :as planeplotter]
    [com.lemondronor.orbital-detector.updatedb :as updatedb]
    [com.lemonodor.gflags :as gflags]
    [clojure.data.xml :as xml]
@@ -269,7 +269,7 @@
   (let [args (gflags/parse-flags (cons nil args))]
     (load-extended-data)
     (let [vehicle-groups (->> args
-                              (mapcat orbdet/read-log)
+                              (mapcat planeplotter/read-log)
                               (filter-icaos (gflags/flags :icaos))
                               (filter has-position?)
                               (print-count)
