@@ -1,14 +1,11 @@
 (ns com.lemondronor.orbital-detector.planeplotter
   "Reads and processes PlanePlotter logs."
-  (:require
-   [clj-time.coerce :as timecoerce]
-   [clj-time.format :as timefmt]
-   [clojure.data.csv :as csv]
-   [clojure.java.io :as io]
-   [clojure.string :as string])
-  (:import
-   (java.util.zip GZIPInputStream)
-   (org.joda.time.base BaseDateTime)))
+  (:require [clj-time.coerce :as timecoerce]
+            [clj-time.format :as timefmt]
+            [clojure.data.csv :as csv]
+            [clojure.java.io :as io]
+            [clojure.string :as string])
+  (:import (java.util.zip GZIPInputStream)))
 
 (set! *warn-on-reflection* true)
 

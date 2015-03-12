@@ -1,7 +1,7 @@
 (ns com.lemondronor.orbital-detector.basestationdb
-  ""
-  (:require
-   [clojure.java.jdbc :as jdbc]))
+  "Code for accessing 'basestation.sqb' databases, the ugly ad hoc
+  standard of the planespotting community."
+  (:require [clojure.java.jdbc :as jdbc]))
 
 (set! *warn-on-reflection* true)
 

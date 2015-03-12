@@ -1,11 +1,5 @@
 (ns com.lemondronor.orbital-detector
-  (require
-   [com.lemonodor.gflags :as gflags]
-   [geo.poly :as poly]
-   [geo.spatial :as spatial])
-  (import
-   (java.util.zip GZIPInputStream)
-   (org.joda.time.base BaseDateTime))
+  (:require [geo.spatial :as spatial])
   (:gen-class))
 
 (set! *warn-on-reflection* true)

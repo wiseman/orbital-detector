@@ -28,8 +28,7 @@
   (:require [clojure.data.csv :as csv]
             [clojure.java.io :as io]
             [clojure.java.jdbc :as jdbc]
-            [com.lemondronor.orbital-detector.basestationdb :as basestationdb])
-  (:import ()))
+            [com.lemondronor.orbital-detector.basestationdb :as basestationdb]))
 
 (set! *warn-on-reflection* true)
 
