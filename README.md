@@ -10,8 +10,8 @@ Code for finding, analyzing and visualizing police aircraft over Los Angeles
 
 ```
 $ lein run -m com.lemondronor.orbital-detector.log2kml \
-  --icaos $(cat icaos.txt) \
-  --extended-data aircraft.csv\
+  --icaos AE094B,A68A37 \
+  --extended-data aircraft.csv \
   RTL15030200.log.gz RTL15030300.log.gz > log.kml
 ```
 
