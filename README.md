@@ -1,6 +1,6 @@
 # orbital detector
 
-![Alt text](/media/screenshots/turboshrimp-hud.jpg?raw=true "Turboshrimp HUD")
+![KML screenshot](/screenshots/log2kml.jpg?raw=true "KML screenshot")
 
 Code for finding, analyzing and visualizing police aircraft over Los Angeles
 
