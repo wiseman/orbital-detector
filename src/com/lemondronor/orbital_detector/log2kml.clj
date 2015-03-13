@@ -49,7 +49,6 @@
 
 (defn registration [icao]
   (let [r (:Registration (extended-data icao))]
-    (warn "Registration of" (pr-str icao) "is" r)
     r))
 
 
@@ -265,6 +264,12 @@
   s)
 
 
+(defn render-kml [kml]
+  (-> kml
+      xml/sexp-as-element
+      xml/emit-str))
+
+
 (defn -main [& args]
   (let [args (gflags/parse-flags (cons nil args))]
     (load-extended-data)
@@ -285,6 +290,5 @@
                           (filter #(> (count %) 10))
                           (map-indexed kmltrack))]
       (-> (kmldoc vehicle-groups kml-tracks)
-          xml/sexp-as-element
-          xml/emit-str
+          render-kml
           println))))

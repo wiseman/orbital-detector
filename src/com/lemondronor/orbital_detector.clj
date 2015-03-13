@@ -1,28 +1,55 @@
 (ns com.lemondronor.orbital-detector
-  (:require [geo.spatial :as spatial])
+  (:require [com.lemondronor.orbital-detector.geo :as geo]
+            [geo.spatial :as spatial])
   (:gen-class))
 
 (set! *warn-on-reflection* true)
 
 
-(defn normalize-hdg [h]
-  (cond
-    (> h 360.0) (normalize-hdg (- h 360.0))
-    (< h 0.0) (normalize-hdg (+ h 360.0))
-    (= h 360.0) 0.0))
+(defn segments [reports]
+  (partition 2 1 reports))
 
 
-(defn turning-direction [hdg1 hdg2])
+(defn turns [segments]
+  (partition 2 1 segments))
+
+(defn turns-to-reports [turns]
+  ()
 
 
-(defn constantly-turning? [headings])
+(defn segment-bearing [[a b]]
+  (geo/bearing
+   (:lat (:position a))
+   (:lon (:position a))
+   (:lat (:position b))
+   (:lon (:position b))))
 
 
-(defn is-orbit? [reports]
-  (and (> (count reports) 5)
-       (let [points (map #(spatial/spatial4j-point (:lat %) (:lon %))
-                         reports)]
-         (println points))))
+(defn turn-angle [[segment1 segment2]]
+  (geo/normalize-bearing
+   (- (segment-bearing segment1)
+      (segment-bearing segment2))))
+
+
+(defn turn-direction [a b c]
+  (let [delta (bearing-delta a b c)]
+    (cond (neg? bearing-delta)
+          :counter-clockwise
+          (pos? bearing-delta)
+          :clockwise
+          :else nil)))
+
+
+(defn longest-subseq [f coll]
+  (let [f (memoize f)
+        a (partition-by #(apply f %) (partition 2 1 coll))
+        ;;_ (println a)
+        b (filter (fn [[[x1 x2]]] (f x1 x2)) a)
+        ;;_ (println b)
+        c (first (sort-by count > b))
+        ;;_ (println c)
+        ]
+    (concat (first c) (map last (rest c)))))
 
 
 (defn -main
