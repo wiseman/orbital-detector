@@ -32,6 +32,14 @@
 
 (set! *warn-on-reflection* true)
 
+(def this-namespace *ns*)
+
+
+(defn error [& args]
+  (flush)
+  (binding [*out* *err*]
+    (apply println args)))
+
 
 (defn read-csv
   "Parses a CSV file. Assumes the first row defines the column names.
@@ -79,13 +87,16 @@
     (jdbc/with-db-transaction [t-conn db-spec]
       (doseq [csv-rec csv]
         (let [db-rec (basestationdb/find-aircraft t-conn (:ICAO csv-rec))]
-          (if csv-rec
+          (if db-rec
             (update-aircraft! t-conn db-rec csv-rec)
             (insert-aircraft! t-conn csv-rec)))))))
 
 
 
 (defn -main [& args]
-  (let [csv-path (first args)
-        db-path (second args)]
-    (update-db! (basestationdb/db-spec db-path) csv-path)))
+  (if-not (= (count args) 2)
+    (do (error "Usage:" this-namespace "<csv path> <basestation.sqb path>")
+        1)
+    (let [csv-path (first args)
+          db-path (second args)]
+      (update-db! (basestationdb/db-spec db-path) csv-path))))
