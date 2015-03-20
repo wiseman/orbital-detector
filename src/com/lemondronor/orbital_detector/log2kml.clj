@@ -1,18 +1,17 @@
 (ns com.lemondronor.orbital-detector.log2kml
   "Converts a PlanePlotter log to KML."
-  (:require
-   [clj-time.coerce :as timecoerce]
-   [clj-time.core :as time]
-   [clj-time.format :as timefmt]
-   [clojure.pprint :as pprint]
-   [com.lemondronor.orbital-detector.planeplotter :as planeplotter]
-   [com.lemondronor.orbital-detector.updatedb :as updatedb]
-   [com.lemonodor.gflags :as gflags]
-   [clojure.data.xml :as xml]
-   [clojure.string :as string]
-   [geo.spatial :as spatial])
-  (:import
-   ())
+  (:require [clj-time.coerce :as timecoerce]
+            [clj-time.core :as time]
+            [clj-time.format :as timefmt]
+            [clojure.data.xml :as xml]
+            [clojure.java.io :as io]
+            [clojure.pprint :as pprint]
+            [clojure.string :as string]
+            [com.lemondronor.orbital-detector.planeplotter :as planeplotter]
+            [com.lemondronor.orbital-detector.updatedb :as updatedb]
+            [com.lemonodor.gflags :as gflags]
+            [geo.spatial :as spatial])
+  (:import ())
   (:gen-class))
 
 (set! *warn-on-reflection* true)
@@ -268,6 +267,15 @@
   (-> kml
       xml/sexp-as-element
       xml/emit-str))
+
+
+
+(defn write-track-kml [path track]
+  (with-open [wrtr (io/writer path)]
+    (binding [*out* wrtr]
+      (-> (kmldoc {} (list (kmltrack 0 track)))
+          render-kml
+          println))))
 
 
 (defn -main [& args]
