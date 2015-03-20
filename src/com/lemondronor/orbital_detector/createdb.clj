@@ -16,16 +16,18 @@
 (defn create-tables [db]
   (jdbc/db-do-commands
    db
-   (jdbc/create-table-ddl
-    :reports
-    [:timestamp :integer]
-    [:icao :text]
-    [:registration :text]
-    [:altitude :integer]
-    [:lat :real]
-    [:lon :real]
-    [:speed :real]
-    [:heading :real])))
+   "CREATE TABLE IF NOT EXISTS reports (timestamp integer, icao text, registration text, altitude integer, lat real, lon real, speed real, heading real)"))
+
+   ;; (println (jdbc/create-table-ddl
+   ;;  :reports
+   ;;  [:timestamp :integer]
+   ;;  [:icao :text]
+   ;;  [:registration :text]
+   ;;  [:altitude :integer]
+   ;;  [:lat :real]
+   ;;  [:lon :real]
+   ;;  [:speed :real]
+   ;;  [:heading :real]))))
 
 
 (defn add-records [log]
