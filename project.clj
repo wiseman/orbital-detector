@@ -11,7 +11,8 @@
                  [org.clojure/data.xml "0.0.8"]
                  [org.clojure/java.jdbc "0.3.6"]
                  [org.xerial/sqlite-jdbc "3.8.7"]]
-  ;;:plugins [[lein-gorilla "0.3.4"]]
+  :plugins [[com.lemondronor.leaflet-gorilla "0.1.1"]
+            [lein-gorilla "0.3.4"]]
   :main ^:skip-aot com.lemondronor.orbital-detector
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}}
