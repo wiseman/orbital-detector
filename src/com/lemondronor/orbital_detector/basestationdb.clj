@@ -20,7 +20,7 @@
   (first
    (jdbc/query
     db-con
-    ["SELECT * from AIRCRAFT WHERE ModeS = ?" icao])))
+    ["SELECT * FROM Aircraft WHERE ModeS = ?" icao])))
 
 
 (defn update-aircraft! [db-conn icao values]
@@ -29,3 +29,9 @@
 
 (defn insert-aircraft! [db-conn values]
   (jdbc/insert! db-conn :Aircraft values))
+
+
+(defn load-db [path]
+  (jdbc/query
+   (db-spec path)
+   "SELECT * FROM Aircraft"))
