@@ -4,6 +4,7 @@
             [clj-time.format :as timefmt]
             [clojure.data.csv :as csv]
             [clojure.java.io :as io]
+            [clojure.java.jdbc :as jdbc]
             [clojure.string :as string])
   (:import (java.util.zip GZIPInputStream)))
 
@@ -44,3 +45,31 @@
        log-reader
        csv/read-csv
        (map parse-log-csv)))
+
+
+(defn parse-report-flightid [flightid]
+  (string/split flightid #";"))
+
+
+(defn report-db-spec [path]
+  {:classname "org.sqlite.JDBC"
+   :subprotocol "sqlite"
+   :subname path})
+
+
+(defn parse-report-db-record [r]
+  (let [[icao callsign registration] (parse-report-flightid (:flightid r))]
+    (assoc
+     r
+     :icao icao
+     :callsign callsign
+     :registration registration
+     :firsttime (timecoerce/to-local-date-time (* 1000 (long (:firsttime r))))
+     :lasttime (timecoerce/to-local-date-time (* 1000 (long (:lasttime r)))))))
+
+
+(defn reports [path]
+  (map parse-report-db-record
+       (jdbc/query
+        (report-db-spec path)
+        "SELECT * from PPreport;")))
