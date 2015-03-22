@@ -37,7 +37,10 @@
       (jdbc/insert!
        t-con
        :reports
-       {:timestamp (long (/ (timecoerce/to-long (:timestamp r)) 1000))
+       {:timestamp (timefmt/unparse
+                    ;; 2015-03-20 11:39:00
+                    (timefmt/formatters :basic-date-time)
+                    (:timestamp r))
         :icao (:icao r)
         :registration (:registration r)
         :altitude (:altitude r)

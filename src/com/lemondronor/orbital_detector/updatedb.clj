@@ -81,7 +81,7 @@
 (defn insert-aircraft! [db-conn csv-rec]
   (let [now (timefmt/unparse
              ;; 2015-03-20 11:39:00
-             (timefmt/formatters :basic-date-time-no-ms) (timelocal/local-now))
+             (timefmt/formatters :basic-date-time) (timelocal/local-now))
         values (assoc (db-values csv-rec)
                       :FirstCreated now
                       :LastModified now
