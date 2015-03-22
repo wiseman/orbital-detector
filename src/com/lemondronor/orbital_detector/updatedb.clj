@@ -25,7 +25,9 @@
     UserTag       - Agency
     ModeSCountry  - \"United States\"
     Registration  - Registration code"
-  (:require [clojure.data.csv :as csv]
+  (:require [clj-time.format :as timefmt]
+            [clj-time.local :as timelocal]
+            [clojure.data.csv :as csv]
             [clojure.java.io :as io]
             [clojure.java.jdbc :as jdbc]
             [com.lemondronor.orbital-detector.basestationdb :as basestationdb]))
@@ -75,8 +77,14 @@
     (basestationdb/update-aircraft! db-conn (:ICAO csv-rec) values)))
 
 
+
 (defn insert-aircraft! [db-conn csv-rec]
-  (let [values (assoc (db-values csv-rec)
+  (let [now (timefmt/unparse
+             ;; 2015-03-20 11:39:00
+             (timefmt/formatters :basic-date-time-no-ms) (timelocal/local-now))
+        values (assoc (db-values csv-rec)
+                      :FirstCreated now
+                      :LastModified now
                       :modes (:ICAO csv-rec))]
     (println "INSERTING:" values)
     (basestationdb/insert-aircraft! db-conn values)))
