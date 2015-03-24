@@ -161,10 +161,13 @@
              (partition-between f reminder))))))
 
 
-(defn partition-sessions [max-time-gap-ms records]
+(defn partition-sessions [max-time-gap-s records]
   (partition-between
    (fn [r1 r2]
-     (<= (- (:timestamp r2) (:timestamp r1)) max-time-gap-ms))
+     (<=
+      (time/in-seconds
+       (time/interval (:timestamp r1) (:timestamp r2)))
+      max-time-gap-s))
    records))
 
 
