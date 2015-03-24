@@ -19,7 +19,6 @@
    {:timestamp :integer
     :icao :text
     :registration :text
-    :type :text
     :altitude :integer
     :lat :real
     :lon :real
