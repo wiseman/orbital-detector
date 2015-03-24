@@ -15,9 +15,8 @@
 
 
 (defn parse-log-csv [csv]
-  {:timestamp (timecoerce/to-long
-               (timefmt/parse
-                datetime-fmt (string/join " " [(csv 0) (csv 1)])))
+  {:timestamp (timefmt/parse
+               datetime-fmt (string/join " " [(csv 0) (csv 1)]))
    :icao (csv 3)
    :registration (let [r (string/trim (csv 4))]
                    (if (pos? (count r))
