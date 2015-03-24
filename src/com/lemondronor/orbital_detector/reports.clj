@@ -46,21 +46,24 @@
           (ddl-clause table-name schema)))))
 
 
+(defn log-record-to-db-record [r]
+  {:timestamp (long (/ (timecoerce/to-long (:timestamp r)) 1000))
+   :icao (:icao r)
+   :registration (:registration r)
+   :altitude (:altitude r)
+   :lat (:lat (:position r))
+   :lon (:lon (:position r))
+   :speed (:speed r)
+   :heading (:heading r)})
+
+
 (defn add-records! [db-path log]
   (jdbc/with-db-transaction [t-con (db-spec db-path)]
     (doseq [r log]
       (jdbc/insert!
        t-con
        :reports
-       {:timestamp (long (/ (timecoerce/to-long (:timestamp r)) 1000))
-        :icao (:icao r)
-        :registration (:registration r)
-        :altitude (:altitude r)
-        :lat (:lat (:position r))
-        :lon (:lon (:position r))
-        :speed (:speed r)
-        :heading (:heading r)}))))
-
+       (log-record-to-db-record r)))))
 
 
 (defn -main [& args]

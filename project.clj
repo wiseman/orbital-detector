@@ -16,4 +16,4 @@
   :main ^:skip-aot com.lemondronor.orbital-detector
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}}
-  :jvm-opts ["-server" "-Xmx11G"])
+  :jvm-opts ["-server" "-Xmx1G"])
