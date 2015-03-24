@@ -4,6 +4,7 @@
             [clj-time.core :as time]
             [clj-time.format :as timefmt]
             [clojure.java.jdbc :as jdbc]
+            [clojure.pprint :as pprint]
             [com.lemondronor.orbital-detector.planeplotter :as planeplotter]
             [com.lemonodor.gflags :as gflags]))
 
@@ -42,6 +43,11 @@
    ;;  [:heading :real]))))
 
 
+(defn has-position? [r]
+  (not (and (zero? (:lat (:position r)))
+            (zero? (:lon (:position r))))))
+
+
 (defn add-records [db log]
   (jdbc/with-db-transaction [t-con db]
     (let [ping-window (gflags/flags :time-window-secs)
@@ -49,19 +55,38 @@
       (loop [records log
              previous-ping-time {}
              num-inserted 0
-             num-skipped 0]
+             num-skipped {:no-position 0
+                             :non-monotonic-time 0
+                             :rate-too-high 0}]
         (if (seq records)
           (let [r (first records)
                 rstrecords (rest records)
                 icao (:icao r)
                 ping-ts (:timestamp r)
                 previous-ping-ts (previous-ping-time icao)]
-            (if (and (or (not position-only?)
-                         (> (:lat (:position r)) 0.0))
-                     (or (nil? previous-ping-ts)
-                         (>= (time/in-seconds
-                              (time/interval previous-ping-ts ping-ts))
-                             ping-window)))
+            (cond
+              ;; No position, and position is required.
+              (and position-only? (not (has-position? r)))
+              (recur rstrecords
+                     previous-ping-time
+                     num-inserted
+                     (update-in num-skipped [:no-position] inc))
+              ;; Non-monotonic time.
+              (and previous-ping-ts
+                   (time/before? ping-ts previous-ping-ts))
+              (recur rstrecords
+                     previous-ping-time
+                     num-inserted
+                     (update-in num-skipped [:non-monotonic-time] inc))
+              ;; Too soon since last ping.
+              (and previous-ping-ts
+                   (< (time/in-seconds (time/interval previous-ping-ts ping-ts))
+                      ping-window))
+              (recur rstrecords
+                     previous-ping-time
+                     num-inserted
+                     (update-in num-skipped [:rate-too-high] inc))
+              :else
               (do
                 (jdbc/insert!
                  t-con
@@ -80,14 +105,11 @@
                 (recur rstrecords
                        (assoc previous-ping-time icao ping-ts)
                        (inc num-inserted)
-                       num-skipped))
-              (recur rstrecords
-                     previous-ping-time
-                     num-inserted
-                     (inc num-skipped))))
+                       num-skipped))))
           (do
             (println "Inserted" num-inserted "records")
-            (println "Skipped" num-skipped "records")))))))
+            (println "Skipped:" (reduce + (map second num-skipped)) "total")
+            (pprint/print-table [num-skipped])))))))
 
 
 
@@ -95,4 +117,10 @@
   (let [args (gflags/parse-flags (cons nil args))
         db (db-spec (first args))]
     (create-tables db)
-    (add-records db (planeplotter/read-log (second args)))))
+    (add-records
+     db
+     (mapcat
+      (fn [log-path]
+        (println "Reading " log-path)
+        (planeplotter/read-log log-path))
+      (rest args)))))
