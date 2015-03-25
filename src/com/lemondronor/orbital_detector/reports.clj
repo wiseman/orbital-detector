@@ -3,6 +3,7 @@
   (:require [clj-time.coerce :as timecoerce]
             [clojure.java.jdbc :as jdbc]
             [clojure.string :as string]
+            [com.lemondronor.orbital-detector.db :as b]
             [com.lemondronor.orbital-detector.planeplotter :as orbdet]))
 
 (set! *warn-on-reflection* true)
@@ -43,5 +44,5 @@
 (defn -main [& args]
   (let [db-path (first args)
         log-path (second args)]
-    (create-db! (db-spec db-path) db-schema)
+    (db/create-db! (db/db-spec db-path) db-schema)
     (add-records! db-path (orbdet/read-log log-path))))
