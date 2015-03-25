@@ -11,6 +11,7 @@
                  [org.clojure/data.csv "0.1.2"]
                  [org.clojure/data.xml "0.0.8"]
                  [org.clojure/java.jdbc "0.3.6"]
+                 [org.clojure/tools.logging "0.3.1"]
                  [org.xerial/sqlite-jdbc "3.8.7"]]
   :plugins [[lein-gorilla "0.3.4"]]
   :main ^:skip-aot com.lemondronor.orbital-detector

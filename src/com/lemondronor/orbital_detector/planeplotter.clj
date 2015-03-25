@@ -1,4 +1,4 @@
-ns com.lemondronor.orbital-detector.planeplotter
+(ns com.lemondronor.orbital-detector.planeplotter
   "Reads and processes PlanePlotter logs."
   (:require [clj-time.coerce :as timecoerce]
             [clj-time.format :as timefmt]

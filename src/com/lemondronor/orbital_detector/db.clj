@@ -1,9 +1,10 @@
 (ns com.lemondronor.orbital-detector.db
-  ""
+  "Database utilties."
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.java.jdbc.deprecated :as jdbcdep]
-   [clojure.string :as string]))
+   [clojure.string :as string]
+   [clojure.tools.logging :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -27,10 +28,11 @@
 
 (defn create-db! [db db-schema]
   (doseq [[table-name schema] db-schema]
-    (jdbc/db-do-commands
-     db
-     (str "CREATE TABLE IF NOT EXISTS "
-          (ddl-clause table-name schema)))))
+    (log/info "Creating database" db)
+    (let [sql (str "CREATE TABLE IF NOT EXISTS "
+                   (ddl-clause table-name schema))]
+      (log/info sql)
+      (jdbc/db-do-commands db sql))))
 
 
 (defn query-seq1 [db query]
