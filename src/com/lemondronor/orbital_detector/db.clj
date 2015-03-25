@@ -2,7 +2,8 @@
   ""
   (:require
    [clojure.java.jdbc :as jdbc]
-   [clojure.java.jdbc.deprecated :as jdbcdep]))
+   [clojure.java.jdbc.deprecated :as jdbcdep]
+   [clojure.string :as string]))
 
 (set! *warn-on-reflection* true)
 
@@ -11,6 +12,25 @@
   {:classname "org.sqlite.JDBC"
    :subprotocol "sqlite"
    :subname path})
+
+
+(defn- ddl-clause [table-name schema]
+  (let [nm (fn [s] (if (or (keyword? s) (symbol? s)) (name s) s))]
+    (str
+     (nm table-name)
+     " ("
+     (string/join
+      ", "
+      (for [[column type] schema] (str (nm column) " " (nm type))))
+     ")")))
+
+
+(defn create-db! [db db-schema]
+  (doseq [[table-name schema] db-schema]
+    (jdbc/db-do-commands
+     db
+     (str "CREATE TABLE IF NOT EXISTS "
+          (ddl-clause table-name schema)))))
 
 
 (defn query-seq1 [db query]

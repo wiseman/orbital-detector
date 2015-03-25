@@ -1,5 +1,6 @@
 (ns com.lemondronor.orbital-detector.basestationdb-test
   (:require [com.lemondronor.orbital-detector.basestationdb :as basestationdb]
+            [com.lemondronor.orbital-detector.db :as db]
             [clojure.test :refer :all]))
 
 
@@ -31,22 +32,22 @@
   (testing "find N520PD in basestation-1.sqb"
     (is (records-equiv? N521PD
                         (basestationdb/find-aircraft
-                         (basestationdb/db-spec "dev-resources/basestation-1.sqb")
+                         (db/db-spec "dev-resources/basestation-1.sqb")
                          "A68DEE"))))
   (testing "find N521PD in basestation-1.sqb"
     (is (records-equiv? N520PD
                         (basestationdb/find-aircraft
-                         (basestationdb/db-spec "dev-resources/basestation-1.sqb")
+                         (db/db-spec "dev-resources/basestation-1.sqb")
                          "A68A37"))))
   (testing "find N520PD in basestation-planebase.sqb"
     (is (records-equiv? N521PD
                         (basestationdb/find-aircraft
-                         (basestationdb/db-spec "dev-resources/basestation-planebase.sqb")
+                         (db/db-spec "dev-resources/basestation-planebase.sqb")
                          "A68DEE"))))
   (testing "find on non-existent aircraft"
     (is (= nil
            (basestationdb/find-aircraft
-            (basestationdb/db-spec "dev-resources/basestation-1.sqb")
+            (db/db-spec "dev-resources/basestation-1.sqb")
             "XXXXXX")))))
 
 
