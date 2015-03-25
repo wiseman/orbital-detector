@@ -2,10 +2,15 @@
   ""
   (:require
    [clojure.java.jdbc :as jdbc]
-   [clojure.java.jdbc.deprecated :as jdbcdep]
-   ))
+   [clojure.java.jdbc.deprecated :as jdbcdep]))
 
 (set! *warn-on-reflection* true)
+
+
+(defn db-spec [path]
+  {:classname "org.sqlite.JDBC"
+   :subprotocol "sqlite"
+   :subname path})
 
 
 (defn query-seq1 [db query]

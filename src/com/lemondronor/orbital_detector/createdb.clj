@@ -5,6 +5,7 @@
             [clj-time.format :as timefmt]
             [clojure.java.jdbc :as jdbc]
             [clojure.pprint :as pprint]
+            [com.lemondronor.orbital-detector.db :as db]
             [com.lemondronor.orbital-detector.planeplotter :as planeplotter]
             [com.lemonodor.gflags :as gflags]))
 
@@ -18,12 +19,6 @@
 (gflags/define-boolean "with-position-only"
   true
   "Only keep pings that have position information.")
-
-
-(defn db-spec [path]
-  {:classname "org.sqlite.JDBC"
-   :subprotocol "sqlite"
-   :subname path})
 
 
 (defn create-tables [db]
@@ -115,7 +110,7 @@
 
 (defn -main [& args]
   (let [args (gflags/parse-flags (cons nil args))
-        db (db-spec (first args))]
+        db (db/db-spec (first args))]
     (create-tables db)
     (add-records
      db

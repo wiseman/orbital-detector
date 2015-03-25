@@ -1,11 +1,12 @@
-(ns com.lemondronor.orbital-detector.planeplotter
+ns com.lemondronor.orbital-detector.planeplotter
   "Reads and processes PlanePlotter logs."
   (:require [clj-time.coerce :as timecoerce]
             [clj-time.format :as timefmt]
             [clojure.data.csv :as csv]
             [clojure.java.io :as io]
             [clojure.java.jdbc :as jdbc]
-            [clojure.string :as string])
+            [clojure.string :as string]
+            [com.lemondronor.orbital-detector.db :as db])
   (:import (java.util.zip GZIPInputStream)))
 
 (set! *warn-on-reflection* true)
@@ -51,9 +52,7 @@
 
 
 (defn report-db-spec [path]
-  {:classname "org.sqlite.JDBC"
-   :subprotocol "sqlite"
-   :subname path})
+  (db/db-spec path))
 
 
 (defn parse-report-db-record [r]

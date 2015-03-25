@@ -1,17 +1,10 @@
 (ns com.lemondronor.orbital-detector.basestationdb
   "Code for accessing 'basestation.sqb' databases, the ugly ad hoc
   standard of the planespotting community."
-  (:require [clojure.java.jdbc :as jdbc]))
+  (:require [clojure.java.jdbc :as jdbc]
+            [com.lemondronor.orbital-detector.db :as db]))
 
 (set! *warn-on-reflection* true)
-
-
-(defn db-spec
-  "Returns the JDBC spec for an sqlite database at the specified path."
-  [path]
-  {:classname "org.sqlite.JDBC"
-   :subprotocol "sqlite"
-   :subname path})
 
 
 (defn find-aircraft
@@ -33,5 +26,5 @@
 
 (defn load-db [path]
   (jdbc/query
-   (db-spec path)
+   (db/db-spec path)
    "SELECT * FROM Aircraft"))
