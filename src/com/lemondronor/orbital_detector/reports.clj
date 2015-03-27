@@ -25,7 +25,7 @@
 
 (def db-schema
   {:reports
-   {:timestamp :integer
+   {:timestamp :text
     :icao :text
     :registration :text
     :altitude :integer
@@ -130,3 +130,14 @@
       (add-records!
        db
        (planeplotter/read-log log-path)))))
+
+(comment
+
+  (def geojson
+  (->> (com.lemondronor.orbital-detector.db/query-seq1
+        (com.lemondronor.orbital-detector.db/db-spec "pings.sqb")
+        "SELECT lat, lon FROM reports")
+       (map (fn [r] [(:lat r) (:lon r)]))
+       (map list)
+       (com.lemondronor.orbital-detector.geojson/geojson)))
+  )
