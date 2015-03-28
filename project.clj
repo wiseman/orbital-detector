@@ -9,6 +9,7 @@
                  [factual/geo "1.0.0"]
                  [org.clojure/clojure "1.6.0"]
                  [org.clojure/data.csv "0.1.2"]
+                 [org.clojure/data.json "0.2.6"]
                  [org.clojure/data.xml "0.0.8"]
                  [org.clojure/java.jdbc "0.3.6"]
                  [org.clojure/tools.logging "0.3.1"]
@@ -17,4 +18,4 @@
   :main ^:skip-aot com.lemondronor.orbital-detector
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}}
-  :jvm-opts ["-server" "-Xmx1G"])
+  :jvm-opts ["-server" "-Xmx11G"])
