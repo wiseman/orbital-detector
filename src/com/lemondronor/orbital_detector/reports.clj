@@ -25,7 +25,7 @@
 
 (def db-schema
   {:reports
-   {:timestamp :text
+   {:timestamp :datetime
     :icao :text
     :registration :text
     :altitude :integer

@@ -1,0 +1,4 @@
+load database
+     from basestation.sqb
+     into postgresql:///orbital
+INCLUDING ONLY TABLE NAMES MATCHING 'Aircraft';

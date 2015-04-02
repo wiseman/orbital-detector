@@ -30,6 +30,7 @@
             [clojure.data.csv :as csv]
             [clojure.java.io :as io]
             [clojure.java.jdbc :as jdbc]
+            [com.lemondronor.orbital-detector.db :as db]
             [com.lemondronor.orbital-detector.basestationdb :as basestationdb]))
 
 (set! *warn-on-reflection* true)
@@ -107,4 +108,4 @@
         1)
     (let [csv-path (first args)
           db-path (second args)]
-      (update-db! (basestationdb/db-spec db-path) csv-path))))
+      (update-db! (db/db-spec db-path) csv-path))))
