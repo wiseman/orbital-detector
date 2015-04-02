@@ -1,0 +1,278 @@
+;; gorilla-repl.fileformat = 1
+
+;; **
+;;; # Tracking aircraft over Los Angeles
+;;; 
+;; **
+
+;; @@
+(ns mirthful-iceberg
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.pprint :as pprint]
+            [com.lemondronor.leaflet-gorilla :as lg]
+            [com.lemondronor.orbital-detector.basestationdb :as basestationdb]
+            [gorilla-plot.core :as plot]))
+
+(def db "postgresql://localhost:5432/orbital")
+;; @@
+;; =>
+;;; {"type":"html","content":"<span class='clj-var'>#&#x27;mirthful-iceberg/db</span>","value":"#'mirthful-iceberg/db"}
+;; <=
+
+;; **
+;;; ## Basic stats
+;; **
+
+;; @@
+(println "Total reports:" (jdbc/query db "select count(*) from reports;"))
+(println "Approximate total # of aircraft seen:" (jdbc/query db "select count(distinct icao) from reports;"))
+(println "Number of days:" (jdbc/query db "select count(distinct timestamp::date) from reports;"))
+;; @@
+;; ->
+;;; Total reports: ({:count 6093909})
+;;; Approximate total # of aircraft seen: ({:count 17668})
+;;; Number of days: ({:count 30})
+;;; 
+;; <-
+;; =>
+;;; {"type":"html","content":"<span class='clj-nil'>nil</span>","value":"nil"}
+;; <=
+
+;; **
+;;; ## Count of aircraft seen on each day
+;;; 
+;;; Aircraft counts are approximate because while all the ADS-B pings I receive can be correctly attributed to individual airframes via the permanently assigned ICAO codes (except for occasional things like miscoded transponders and military aircraft spoofing their IDs), some pings are TIS-B and have IDs that are assigned only temporarily and may be reused.
+;; **
+
+;; @@
+(def daily-counts
+  (jdbc/query
+    db
+    "select timestamp::date as day, count(distinct icao) from reports group by day;"))
+
+;; @@
+;; =>
+;;; {"type":"html","content":"<span class='clj-var'>#&#x27;mirthful-iceberg/daily-counts</span>","value":"#'mirthful-iceberg/daily-counts"}
+;; <=
+
+;; @@
+(plot/bar-chart (map :day daily-counts) (map :count daily-counts) :plot-size 800)
+;; @@
+;; =>
+;;; {"type":"vega","content":{"axes":[{"scale":"x","type":"x"},{"scale":"y","type":"y"}],"scales":[{"name":"x","type":"ordinal","range":"width","domain":{"data":"4363f9e2-4028-4eda-b9ec-8d6b8e8ff462","field":"data.x"}},{"name":"y","range":"height","nice":true,"domain":{"data":"4363f9e2-4028-4eda-b9ec-8d6b8e8ff462","field":"data.y"}}],"marks":[{"type":"rect","from":{"data":"4363f9e2-4028-4eda-b9ec-8d6b8e8ff462"},"properties":{"enter":{"y":{"scale":"y","field":"data.y"},"width":{"offset":-1,"scale":"x","band":true},"x":{"scale":"x","field":"data.x"},"y2":{"scale":"y","value":0}},"update":{"fill":{"value":"steelblue"},"opacity":{"value":1}},"hover":{"fill":{"value":"#FF29D2"}}}}],"data":[{"name":"4363f9e2-4028-4eda-b9ec-8d6b8e8ff462","values":[{"x":"2015-03-01T08:00:00Z","y":1118},{"x":"2015-03-02T08:00:00Z","y":5315},{"x":"2015-03-03T08:00:00Z","y":5733},{"x":"2015-03-04T08:00:00Z","y":5720},{"x":"2015-03-05T08:00:00Z","y":5776},{"x":"2015-03-06T08:00:00Z","y":6008},{"x":"2015-03-07T08:00:00Z","y":5543},{"x":"2015-03-08T08:00:00Z","y":5601},{"x":"2015-03-09T07:00:00Z","y":5190},{"x":"2015-03-10T07:00:00Z","y":4809},{"x":"2015-03-11T07:00:00Z","y":5599},{"x":"2015-03-12T07:00:00Z","y":5749},{"x":"2015-03-13T07:00:00Z","y":5464},{"x":"2015-03-14T07:00:00Z","y":4527},{"x":"2015-03-15T07:00:00Z","y":5397},{"x":"2015-03-16T07:00:00Z","y":5732},{"x":"2015-03-17T07:00:00Z","y":5807},{"x":"2015-03-18T07:00:00Z","y":5546},{"x":"2015-03-19T07:00:00Z","y":5812},{"x":"2015-03-20T07:00:00Z","y":6007},{"x":"2015-03-21T07:00:00Z","y":5699},{"x":"2015-03-22T07:00:00Z","y":5127},{"x":"2015-03-23T07:00:00Z","y":4948},{"x":"2015-03-24T07:00:00Z","y":2957},{"x":"2015-03-25T07:00:00Z","y":1360},{"x":"2015-03-26T07:00:00Z","y":1620},{"x":"2015-03-27T07:00:00Z","y":1352},{"x":"2015-03-28T07:00:00Z","y":1028},{"x":"2015-03-29T07:00:00Z","y":2842},{"x":"2015-03-30T07:00:00Z","y":2512}]}],"width":800,"height":494.4375915527344,"padding":{"bottom":20,"top":10,"right":10,"left":50}},"value":"#gorilla_repl.vega.VegaView{:content {:axes [{:scale \"x\", :type \"x\"} {:scale \"y\", :type \"y\"}], :scales [{:name \"x\", :type \"ordinal\", :range \"width\", :domain {:data \"4363f9e2-4028-4eda-b9ec-8d6b8e8ff462\", :field \"data.x\"}} {:name \"y\", :range \"height\", :nice true, :domain {:data \"4363f9e2-4028-4eda-b9ec-8d6b8e8ff462\", :field \"data.y\"}}], :marks [{:type \"rect\", :from {:data \"4363f9e2-4028-4eda-b9ec-8d6b8e8ff462\"}, :properties {:enter {:y {:scale \"y\", :field \"data.y\"}, :width {:offset -1, :scale \"x\", :band true}, :x {:scale \"x\", :field \"data.x\"}, :y2 {:scale \"y\", :value 0}}, :update {:fill {:value \"steelblue\"}, :opacity {:value 1}}, :hover {:fill {:value \"#FF29D2\"}}}}], :data [{:name \"4363f9e2-4028-4eda-b9ec-8d6b8e8ff462\", :values ({:x #inst \"2015-03-01T08:00:00.000-00:00\", :y 1118} {:x #inst \"2015-03-02T08:00:00.000-00:00\", :y 5315} {:x #inst \"2015-03-03T08:00:00.000-00:00\", :y 5733} {:x #inst \"2015-03-04T08:00:00.000-00:00\", :y 5720} {:x #inst \"2015-03-05T08:00:00.000-00:00\", :y 5776} {:x #inst \"2015-03-06T08:00:00.000-00:00\", :y 6008} {:x #inst \"2015-03-07T08:00:00.000-00:00\", :y 5543} {:x #inst \"2015-03-08T08:00:00.000-00:00\", :y 5601} {:x #inst \"2015-03-09T07:00:00.000-00:00\", :y 5190} {:x #inst \"2015-03-10T07:00:00.000-00:00\", :y 4809} {:x #inst \"2015-03-11T07:00:00.000-00:00\", :y 5599} {:x #inst \"2015-03-12T07:00:00.000-00:00\", :y 5749} {:x #inst \"2015-03-13T07:00:00.000-00:00\", :y 5464} {:x #inst \"2015-03-14T07:00:00.000-00:00\", :y 4527} {:x #inst \"2015-03-15T07:00:00.000-00:00\", :y 5397} {:x #inst \"2015-03-16T07:00:00.000-00:00\", :y 5732} {:x #inst \"2015-03-17T07:00:00.000-00:00\", :y 5807} {:x #inst \"2015-03-18T07:00:00.000-00:00\", :y 5546} {:x #inst \"2015-03-19T07:00:00.000-00:00\", :y 5812} {:x #inst \"2015-03-20T07:00:00.000-00:00\", :y 6007} {:x #inst \"2015-03-21T07:00:00.000-00:00\", :y 5699} {:x #inst \"2015-03-22T07:00:00.000-00:00\", :y 5127} {:x #inst \"2015-03-23T07:00:00.000-00:00\", :y 4948} {:x #inst \"2015-03-24T07:00:00.000-00:00\", :y 2957} {:x #inst \"2015-03-25T07:00:00.000-00:00\", :y 1360} {:x #inst \"2015-03-26T07:00:00.000-00:00\", :y 1620} {:x #inst \"2015-03-27T07:00:00.000-00:00\", :y 1352} {:x #inst \"2015-03-28T07:00:00.000-00:00\", :y 1028} {:x #inst \"2015-03-29T07:00:00.000-00:00\", :y 2842} {:x #inst \"2015-03-30T07:00:00.000-00:00\", :y 2512})}], :width 800, :height 494.4376, :padding {:bottom 20, :top 10, :right 10, :left 50}}}"}
+;; <=
+
+;; **
+;;; ## Count of aircraft seen by hour of the week
+;; **
+
+;; @@
+(def hour-of-week-counts
+  (jdbc/query
+    db
+    "select extract(dow from timestamp) as dow, extract(hour from timestamp) as hour, count(*) from reports group by dow, hour;"))
+;; @@
+;; =>
+;;; {"type":"html","content":"<span class='clj-var'>#&#x27;mirthful-iceberg/hour-of-week-counts</span>","value":"#'mirthful-iceberg/hour-of-week-counts"}
+;; <=
+
+;; @@
+(plot/list-plot (map (fn [r] [(+ (* 24 (:dow r)) (:hour r)) (:count r)]) hour-of-week-counts) :joined true :plot-size 800)
+;; @@
+;; =>
+;;; {"type":"vega","content":{"axes":[{"scale":"x","type":"x"},{"scale":"y","type":"y"}],"scales":[{"name":"x","type":"linear","range":"width","zero":false,"domain":{"data":"f659b0ea-02ac-4104-a0d0-63c7d6da693f","field":"data.x"}},{"name":"y","type":"linear","range":"height","nice":true,"zero":false,"domain":{"data":"f659b0ea-02ac-4104-a0d0-63c7d6da693f","field":"data.y"}}],"marks":[{"type":"line","from":{"data":"f659b0ea-02ac-4104-a0d0-63c7d6da693f"},"properties":{"enter":{"x":{"scale":"x","field":"data.x"},"y":{"scale":"y","field":"data.y"},"stroke":{"value":"#FF29D2"},"strokeWidth":{"value":2},"strokeOpacity":{"value":1}}}}],"data":[{"name":"f659b0ea-02ac-4104-a0d0-63c7d6da693f","values":[{"x":0.0,"y":10214},{"x":1.0,"y":6829},{"x":2.0,"y":2975},{"x":3.0,"y":7331},{"x":4.0,"y":7926},{"x":5.0,"y":1589},{"x":6.0,"y":15858},{"x":7.0,"y":29974},{"x":8.0,"y":39002},{"x":9.0,"y":29831},{"x":10.0,"y":82832},{"x":11.0,"y":24095},{"x":12.0,"y":60805},{"x":13.0,"y":76444},{"x":14.0,"y":60768},{"x":15.0,"y":41499},{"x":16.0,"y":59031},{"x":17.0,"y":35335},{"x":18.0,"y":14839},{"x":19.0,"y":14932},{"x":20.0,"y":39629},{"x":21.0,"y":48357},{"x":22.0,"y":34714},{"x":23.0,"y":25171},{"x":24.0,"y":28119},{"x":25.0,"y":12895},{"x":26.0,"y":6129},{"x":27.0,"y":2986},{"x":28.0,"y":843},{"x":29.0,"y":2286},{"x":30.0,"y":13947},{"x":31.0,"y":46509},{"x":32.0,"y":26972},{"x":33.0,"y":28144},{"x":34.0,"y":55090},{"x":35.0,"y":93722},{"x":36.0,"y":90007},{"x":37.0,"y":58681},{"x":38.0,"y":57322},{"x":39.0,"y":76074},{"x":40.0,"y":43860},{"x":41.0,"y":40967},{"x":42.0,"y":54345},{"x":43.0,"y":40199},{"x":44.0,"y":53472},{"x":45.0,"y":29632},{"x":46.0,"y":15088},{"x":47.0,"y":15614},{"x":48.0,"y":7319},{"x":49.0,"y":4611},{"x":50.0,"y":7638},{"x":51.0,"y":5608},{"x":52.0,"y":3116},{"x":53.0,"y":14292},{"x":54.0,"y":70933},{"x":55.0,"y":85347},{"x":56.0,"y":48526},{"x":57.0,"y":51868},{"x":58.0,"y":59313},{"x":59.0,"y":39331},{"x":60.0,"y":47269},{"x":61.0,"y":51218},{"x":62.0,"y":32932},{"x":63.0,"y":85403},{"x":64.0,"y":42953},{"x":65.0,"y":24751},{"x":66.0,"y":19598},{"x":67.0,"y":15501},{"x":68.0,"y":30643},{"x":69.0,"y":47028},{"x":70.0,"y":15541},{"x":71.0,"y":11070},{"x":72.0,"y":7882},{"x":73.0,"y":8858},{"x":74.0,"y":9473},{"x":75.0,"y":4860},{"x":76.0,"y":3468},{"x":77.0,"y":5665},{"x":78.0,"y":25225},{"x":79.0,"y":74330},{"x":80.0,"y":55401},{"x":81.0,"y":27969},{"x":82.0,"y":45284},{"x":83.0,"y":27107},{"x":84.0,"y":66253},{"x":85.0,"y":94371},{"x":86.0,"y":73313},{"x":87.0,"y":78996},{"x":88.0,"y":30138},{"x":89.0,"y":31176},{"x":90.0,"y":31282},{"x":91.0,"y":29460},{"x":92.0,"y":35586},{"x":93.0,"y":31428},{"x":94.0,"y":18056},{"x":95.0,"y":14907},{"x":96.0,"y":9739},{"x":97.0,"y":4979},{"x":98.0,"y":10691},{"x":99.0,"y":6712},{"x":100.0,"y":2132},{"x":101.0,"y":4587},{"x":102.0,"y":23412},{"x":103.0,"y":26326},{"x":104.0,"y":29653},{"x":105.0,"y":66949},{"x":106.0,"y":87144},{"x":107.0,"y":107133},{"x":108.0,"y":131580},{"x":109.0,"y":87843},{"x":110.0,"y":71890},{"x":111.0,"y":64535},{"x":112.0,"y":70431},{"x":113.0,"y":35399},{"x":114.0,"y":38433},{"x":115.0,"y":38165},{"x":116.0,"y":33758},{"x":117.0,"y":32156},{"x":118.0,"y":36855},{"x":119.0,"y":17427},{"x":120.0,"y":6850},{"x":121.0,"y":6569},{"x":122.0,"y":16428},{"x":123.0,"y":11203},{"x":124.0,"y":9772},{"x":125.0,"y":25921},{"x":126.0,"y":26777},{"x":127.0,"y":46844},{"x":128.0,"y":37892},{"x":129.0,"y":93061},{"x":130.0,"y":103519},{"x":131.0,"y":80418},{"x":132.0,"y":84680},{"x":133.0,"y":88823},{"x":134.0,"y":80618},{"x":135.0,"y":73026},{"x":136.0,"y":63253},{"x":137.0,"y":39181},{"x":138.0,"y":28910},{"x":139.0,"y":15685},{"x":140.0,"y":30282},{"x":141.0,"y":15748},{"x":142.0,"y":30309},{"x":143.0,"y":28809},{"x":144.0,"y":10903},{"x":145.0,"y":15970},{"x":146.0,"y":40488},{"x":147.0,"y":14083},{"x":148.0,"y":501},{"x":149.0,"y":2145},{"x":150.0,"y":25237},{"x":151.0,"y":41865},{"x":152.0,"y":21641},{"x":153.0,"y":17291},{"x":154.0,"y":29950},{"x":155.0,"y":56398},{"x":156.0,"y":55758},{"x":157.0,"y":35054},{"x":158.0,"y":69190},{"x":159.0,"y":48395},{"x":160.0,"y":14736},{"x":161.0,"y":45262},{"x":162.0,"y":22609},{"x":163.0,"y":24152},{"x":164.0,"y":36404},{"x":165.0,"y":32156},{"x":166.0,"y":16725},{"x":167.0,"y":19309}]}],"width":800,"height":494.4375915527344,"padding":{"bottom":20,"top":10,"right":10,"left":50}},"value":"#gorilla_repl.vega.VegaView{:content {:axes [{:scale \"x\", :type \"x\"} {:scale \"y\", :type \"y\"}], :scales [{:name \"x\", :type \"linear\", :range \"width\", :zero false, :domain {:data \"f659b0ea-02ac-4104-a0d0-63c7d6da693f\", :field \"data.x\"}} {:name \"y\", :type \"linear\", :range \"height\", :nice true, :zero false, :domain {:data \"f659b0ea-02ac-4104-a0d0-63c7d6da693f\", :field \"data.y\"}}], :marks [{:type \"line\", :from {:data \"f659b0ea-02ac-4104-a0d0-63c7d6da693f\"}, :properties {:enter {:x {:scale \"x\", :field \"data.x\"}, :y {:scale \"y\", :field \"data.y\"}, :stroke {:value \"#FF29D2\"}, :strokeWidth {:value 2}, :strokeOpacity {:value 1}}}}], :data [{:name \"f659b0ea-02ac-4104-a0d0-63c7d6da693f\", :values ({:x 0.0, :y 10214} {:x 1.0, :y 6829} {:x 2.0, :y 2975} {:x 3.0, :y 7331} {:x 4.0, :y 7926} {:x 5.0, :y 1589} {:x 6.0, :y 15858} {:x 7.0, :y 29974} {:x 8.0, :y 39002} {:x 9.0, :y 29831} {:x 10.0, :y 82832} {:x 11.0, :y 24095} {:x 12.0, :y 60805} {:x 13.0, :y 76444} {:x 14.0, :y 60768} {:x 15.0, :y 41499} {:x 16.0, :y 59031} {:x 17.0, :y 35335} {:x 18.0, :y 14839} {:x 19.0, :y 14932} {:x 20.0, :y 39629} {:x 21.0, :y 48357} {:x 22.0, :y 34714} {:x 23.0, :y 25171} {:x 24.0, :y 28119} {:x 25.0, :y 12895} {:x 26.0, :y 6129} {:x 27.0, :y 2986} {:x 28.0, :y 843} {:x 29.0, :y 2286} {:x 30.0, :y 13947} {:x 31.0, :y 46509} {:x 32.0, :y 26972} {:x 33.0, :y 28144} {:x 34.0, :y 55090} {:x 35.0, :y 93722} {:x 36.0, :y 90007} {:x 37.0, :y 58681} {:x 38.0, :y 57322} {:x 39.0, :y 76074} {:x 40.0, :y 43860} {:x 41.0, :y 40967} {:x 42.0, :y 54345} {:x 43.0, :y 40199} {:x 44.0, :y 53472} {:x 45.0, :y 29632} {:x 46.0, :y 15088} {:x 47.0, :y 15614} {:x 48.0, :y 7319} {:x 49.0, :y 4611} {:x 50.0, :y 7638} {:x 51.0, :y 5608} {:x 52.0, :y 3116} {:x 53.0, :y 14292} {:x 54.0, :y 70933} {:x 55.0, :y 85347} {:x 56.0, :y 48526} {:x 57.0, :y 51868} {:x 58.0, :y 59313} {:x 59.0, :y 39331} {:x 60.0, :y 47269} {:x 61.0, :y 51218} {:x 62.0, :y 32932} {:x 63.0, :y 85403} {:x 64.0, :y 42953} {:x 65.0, :y 24751} {:x 66.0, :y 19598} {:x 67.0, :y 15501} {:x 68.0, :y 30643} {:x 69.0, :y 47028} {:x 70.0, :y 15541} {:x 71.0, :y 11070} {:x 72.0, :y 7882} {:x 73.0, :y 8858} {:x 74.0, :y 9473} {:x 75.0, :y 4860} {:x 76.0, :y 3468} {:x 77.0, :y 5665} {:x 78.0, :y 25225} {:x 79.0, :y 74330} {:x 80.0, :y 55401} {:x 81.0, :y 27969} {:x 82.0, :y 45284} {:x 83.0, :y 27107} {:x 84.0, :y 66253} {:x 85.0, :y 94371} {:x 86.0, :y 73313} {:x 87.0, :y 78996} {:x 88.0, :y 30138} {:x 89.0, :y 31176} {:x 90.0, :y 31282} {:x 91.0, :y 29460} {:x 92.0, :y 35586} {:x 93.0, :y 31428} {:x 94.0, :y 18056} {:x 95.0, :y 14907} {:x 96.0, :y 9739} {:x 97.0, :y 4979} {:x 98.0, :y 10691} {:x 99.0, :y 6712} {:x 100.0, :y 2132} {:x 101.0, :y 4587} {:x 102.0, :y 23412} {:x 103.0, :y 26326} {:x 104.0, :y 29653} {:x 105.0, :y 66949} {:x 106.0, :y 87144} {:x 107.0, :y 107133} {:x 108.0, :y 131580} {:x 109.0, :y 87843} {:x 110.0, :y 71890} {:x 111.0, :y 64535} {:x 112.0, :y 70431} {:x 113.0, :y 35399} {:x 114.0, :y 38433} {:x 115.0, :y 38165} {:x 116.0, :y 33758} {:x 117.0, :y 32156} {:x 118.0, :y 36855} {:x 119.0, :y 17427} {:x 120.0, :y 6850} {:x 121.0, :y 6569} {:x 122.0, :y 16428} {:x 123.0, :y 11203} {:x 124.0, :y 9772} {:x 125.0, :y 25921} {:x 126.0, :y 26777} {:x 127.0, :y 46844} {:x 128.0, :y 37892} {:x 129.0, :y 93061} {:x 130.0, :y 103519} {:x 131.0, :y 80418} {:x 132.0, :y 84680} {:x 133.0, :y 88823} {:x 134.0, :y 80618} {:x 135.0, :y 73026} {:x 136.0, :y 63253} {:x 137.0, :y 39181} {:x 138.0, :y 28910} {:x 139.0, :y 15685} {:x 140.0, :y 30282} {:x 141.0, :y 15748} {:x 142.0, :y 30309} {:x 143.0, :y 28809} {:x 144.0, :y 10903} {:x 145.0, :y 15970} {:x 146.0, :y 40488} {:x 147.0, :y 14083} {:x 148.0, :y 501} {:x 149.0, :y 2145} {:x 150.0, :y 25237} {:x 151.0, :y 41865} {:x 152.0, :y 21641} {:x 153.0, :y 17291} {:x 154.0, :y 29950} {:x 155.0, :y 56398} {:x 156.0, :y 55758} {:x 157.0, :y 35054} {:x 158.0, :y 69190} {:x 159.0, :y 48395} {:x 160.0, :y 14736} {:x 161.0, :y 45262} {:x 162.0, :y 22609} {:x 163.0, :y 24152} {:x 164.0, :y 36404} {:x 165.0, :y 32156} {:x 166.0, :y 16725} {:x 167.0, :y 19309})}], :width 800, :height 494.4376, :padding {:bottom 20, :top 10, :right 10, :left 50}}}"}
+;; <=
+
+;; **
+;;; ## Military aircraft seen
+;; **
+
+;; @@
+(def lookup-aircraft (memoize (partial basestationdb/find-aircraft db)))
+
+(defn military-reg? [reg]
+  (let [r (or reg "")]
+    (or (re-find #"[0-9]+\-[0-9]+" r)
+        (re-find #"[0-9][0-9][0-9][0-9][0-9][0-9]" r))))
+
+(def military-icao?
+  (memoize
+    (fn [icao]
+      (let [basestation-record (lookup-aircraft icao)]
+        (or (military-reg? (:registration basestation-record))
+            (re-find #"Mil" (or (:modescountry basestation-record) "")))))))
+            
+(defn military-report? [report]
+  (or (military-reg? (:registration report))
+      (military-icao? (:icao report))))
+
+;; @@
+;; =>
+;;; {"type":"html","content":"<span class='clj-var'>#&#x27;mirthful-iceberg/military-report?</span>","value":"#'mirthful-iceberg/military-report?"}
+;; <=
+
+;; @@
+(def icao-regs (jdbc/query db "select icao, registration from reports group by icao, registration;"))
+(println (count icao-regs))
+
+;; @@
+;; ->
+;;; 26908
+;;; 
+;; <-
+;; =>
+;;; {"type":"html","content":"<span class='clj-nil'>nil</span>","value":"nil"}
+;; <=
+
+;; @@
+(def military-icao-regs (filter military-report? icao-regs))
+(pprint/print-table [:icao :registration] military-icao-regs)
+(pprint/print-table [:icao :registration :icaotypecode :modescountry] (map #(lookup-aircraft (:icao %)) military-icao-regs))
+;; @@
+;; ->
+;;; 
+;;; |  :icao | :registration |
+;;; |--------+---------------|
+;;; | 249249 |      00000000 |
+;;; | A030F2 |      00000000 |
+;;; | A1102E |      505243D1 |
+;;; | A1D81F |      00000000 |
+;;; | A37D74 |      50676564 |
+;;; | A4677A |      61063572 |
+;;; | A52B3E |      00000000 |
+;;; | A56890 |      00000000 |
+;;; | A59B19 |      00000000 |
+;;; | A62F85 |      00000000 |
+;;; | A64E02 |       5600813 |
+;;; | A658ED |      00000000 |
+;;; | A69C72 |      00000000 |
+;;; | A81DF5 |        581842 |
+;;; | A82563 |       576468A |
+;;; | ADFDF9 |               |
+;;; | ADFE95 |        PAT810 |
+;;; | AE0192 |       SPAR708 |
+;;; | AE01BF |       CNV2124 |
+;;; | AE01BF |               |
+;;; | AE021F |       PETRO61 |
+;;; | AE041A |      GOTO FMS |
+;;; | AE041A |               |
+;;; | AE041C |      GOTO FMS |
+;;; | AE041C |               |
+;;; | AE04D9 |       CNV4001 |
+;;; | AE0658 |       GHOST53 |
+;;; | AE10C1 |          C101 |
+;;; | AE10C1 |               |
+;;; | AE10C2 |         VV100 |
+;;; | AE10C2 |               |
+;;; | AE118A |         PAT63 |
+;;; | AE118A |               |
+;;; | AE1258 |         VV100 |
+;;; | AE1258 |         VV376 |
+;;; | AE1258 |               |
+;;; | AE1482 |       RAIDR49 |
+;;; | AE1BA9 |       RAIDR41 |
+;;; | AE1FB6 |               |
+;;; | AE29FE |       CNV4041 |
+;;; | AE2FA7 |               |
+;;; | AE4EC4 |       TIGER05 |
+;;; | AE4EC4 |               |
+;;; | AE5400 |        155481 |
+;;; | AE5400 |               |
+;;; | B18269 |        BAJA42 |
+;;; | C2B373 |       CFC3074 |
+;;; | C2B373 |               |
+;;; 
+;;; | :icao | :registration | :icaotypecode |     :modescountry |
+;;; |-------+---------------+---------------+-------------------|
+;;; |       |               |               |                   |
+;;; |       |        N111LP |          PRM1 |     United States |
+;;; |       |               |               |                   |
+;;; |       |        N218KD |          GLF4 |     United States |
+;;; |       |        N324CX |          GLF5 |     United States |
+;;; |       |        N383LS |          GLF5 |     United States |
+;;; |       |        N432HC |          GLF4 |     United States |
+;;; |       |        N448CJ |          C25C |     United States |
+;;; |       |        N460RG |          C25C |     United States |
+;;; |       |        N498TM |          BE40 |     United States |
+;;; |       |        N505RH |          C560 |     United States |
+;;; |       |         N508P |          GLF5 |     United States |
+;;; |       |        N525KR |          C25C |     United States |
+;;; |       |        N622CZ |          E170 |     United States |
+;;; |       |        N624CZ |          E170 |     United States |
+;;; |       |       92-9000 |          B742 | United States Mil |
+;;; |       |      95-00096 |          BE20 | United States Mil |
+;;; |       |       84-0125 |          LJ35 | United States Mil |
+;;; |       |        165093 |          GLF4 | United States Mil |
+;;; |       |        165093 |          GLF4 | United States Mil |
+;;; |       |       85-0027 |          DC10 | United States Mil |
+;;; |       |        164408 |            E6 | United States Mil |
+;;; |       |        164408 |            E6 | United States Mil |
+;;; |       |        164410 |            E6 | United States Mil |
+;;; |       |        164410 |            E6 | United States Mil |
+;;; |       |        165831 |          B737 | United States Mil |
+;;; |       |       59-1462 |          K35R | United States Mil |
+;;; |       |            01 |          GLF5 | United States Mil |
+;;; |       |            01 |          GLF5 | United States Mil |
+;;; |       |        166375 |          GLF5 | United States Mil |
+;;; |       |        166375 |          GLF5 | United States Mil |
+;;; |       |       02-1863 |          GLF5 | United States Mil |
+;;; |       |       02-1863 |          GLF5 | United States Mil |
+;;; |       |        166376 |          GLF5 | United States Mil |
+;;; |       |        166376 |          GLF5 | United States Mil |
+;;; |       |        166376 |          GLF5 | United States Mil |
+;;; |       |        166765 |          C30J | United States Mil |
+;;; |       |        167924 |          C30J | United States Mil |
+;;; |       |      10-72167 |          EC45 | United States Mil |
+;;; |       |        166695 |          B737 | United States Mil |
+;;; |       |       08-8195 |           C17 | United States Mil |
+;;; |       |        168759 |            P8 | United States Mil |
+;;; |       |        168759 |            P8 | United States Mil |
+;;; |       |        155481 |           V10 | United States Mil |
+;;; |       |        155481 |           V10 | United States Mil |
+;;; |       |       57-2603 |          K35R | United States Mil |
+;;; |       |        144618 |          CL60 |        Canada Mil |
+;;; |       |        144618 |          CL60 |        Canada Mil |
+;;; 
+;; <-
+;; =>
+;;; {"type":"html","content":"<span class='clj-nil'>nil</span>","value":"nil"}
+;; <=
+
+;; @@
+(pprint/print-table
+  [:icao :registration :icaotypecode :modescountry]
+  (jdbc/query db "select reports.icao, Aircraft.registration, Aircraft.icaotypecode, Aircraft.modescountry from reports inner join Aircraft on reports.icao = Aircraft.modes where Aircraft.modescountry like '%Mil%' group by reports.icao, Aircraft.registration, Aircraft.modescountry, Aircraft.icaotypecode;"))
+;; @@
+
+;; @@
+
+;; @@
+;; ->
+;;; 48
+;;; 
+;; <-
+;; =>
+;;; {"type":"html","content":"<span class='clj-nil'>nil</span>","value":"nil"}
+;; <=
+
+;; **
+;;; 164408 |            E6 | United States Mil |
+;;; | AE041C |        164410 
+;;; 
+;;; Aircraft [155481](http://www.airport-data.com/aircraft/155481.html), with type `V10`, seems to be a U.S. Navy OV-10D Bronco:
+;;; 
+;;; <img src="http://farm3.static.flickr.com/2305/2536221596_8dc0a7b337.jpg" width=400>
+;;; 
+;;; [164408](http://www.airport-data.com/aircraft/164408.html) is a U.S. Navy [TACAMO/"Doomsday"](http://en.wikipedia.org/wiki/TACAMO) E-6:
+;;; 
+;;; <img src="http://www.fencecheck.com/forums/download/file.php?id=245020&t=1" width=400>
+;;; 
+;;; And so is [164410](http://www.airport-data.com/aircraft/164410.html):
+;;; 
+;;; <img src="https://s-media-cache-ak0.pinimg.com/736x/18/1d/e7/181de7d61d101535a363d56decb982df.jpg" width=400>
+;;; 
+;; **
+
+;; @@
+
+;; @@
