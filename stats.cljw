@@ -131,120 +131,42 @@
 ;; <=
 
 ;; @@
-(def military-icao-regs (filter military-report? icao-regs))
-(pprint/print-table [:icao :registration] military-icao-regs)
-(pprint/print-table [:icao :registration :icaotypecode :modescountry] (map #(lookup-aircraft (:icao %)) military-icao-regs))
+(defn safe-aircraft-info [icao]
+  (try
+    (airportdata/aircraft-info icao)
+    (catch Exception e
+      (println "Exception" e "for" icao)
+      e)))
+
+(def military-icao-regs (filter military-report? (distinct icao-regs)))
+
+(take 1 military-icao-regs)
+
+(let [col (fn [a] (str "<td>" a "</td>"))]
+  (as-> military-icao-regs X
+        (map #(let [info (lookup-aircraft (:icao %))]
+                (str "<tr>"
+                     (col (str "<img src=\"" (:image (safe-aircraft-info (:icao %))) "\">"))
+                     (col (:icao %))
+                     (col (:registration %))
+                     (col (:icaotypecode info))
+                     (col (:modescountry info))
+                     "</tr>"))
+             X)
+        (string/join X)
+        (str "<table>"
+             "<tr><th>Photo</th><th>ICAO</th><th>Reg</th><th>Type</th><th>Country</th></tr>"
+             X
+             "</table>")
+        (ghtml/html-view X)))
 ;; @@
-;; ->
-;;; 
-;;; |  :icao | :registration |
-;;; |--------+---------------|
-;;; | 249249 |      00000000 |
-;;; | A030F2 |      00000000 |
-;;; | A1102E |      505243D1 |
-;;; | A1D81F |      00000000 |
-;;; | A37D74 |      50676564 |
-;;; | A4677A |      61063572 |
-;;; | A52B3E |      00000000 |
-;;; | A56890 |      00000000 |
-;;; | A59B19 |      00000000 |
-;;; | A62F85 |      00000000 |
-;;; | A64E02 |       5600813 |
-;;; | A658ED |      00000000 |
-;;; | A69C72 |      00000000 |
-;;; | A81DF5 |        581842 |
-;;; | A82563 |       576468A |
-;;; | ADFDF9 |               |
-;;; | ADFE95 |        PAT810 |
-;;; | AE0192 |       SPAR708 |
-;;; | AE01BF |       CNV2124 |
-;;; | AE01BF |               |
-;;; | AE021F |       PETRO61 |
-;;; | AE041A |      GOTO FMS |
-;;; | AE041A |               |
-;;; | AE041C |      GOTO FMS |
-;;; | AE041C |               |
-;;; | AE04D9 |       CNV4001 |
-;;; | AE0658 |       GHOST53 |
-;;; | AE10C1 |          C101 |
-;;; | AE10C1 |               |
-;;; | AE10C2 |         VV100 |
-;;; | AE10C2 |               |
-;;; | AE118A |         PAT63 |
-;;; | AE118A |               |
-;;; | AE1258 |         VV100 |
-;;; | AE1258 |         VV376 |
-;;; | AE1258 |               |
-;;; | AE1482 |       RAIDR49 |
-;;; | AE1BA9 |       RAIDR41 |
-;;; | AE1FB6 |               |
-;;; | AE29FE |       CNV4041 |
-;;; | AE2FA7 |               |
-;;; | AE4EC4 |       TIGER05 |
-;;; | AE4EC4 |               |
-;;; | AE5400 |        155481 |
-;;; | AE5400 |               |
-;;; | B18269 |        BAJA42 |
-;;; | C2B373 |       CFC3074 |
-;;; | C2B373 |               |
-;;; 
-;;; | :icao | :registration | :icaotypecode |     :modescountry |
-;;; |-------+---------------+---------------+-------------------|
-;;; |       |               |               |                   |
-;;; |       |        N111LP |          PRM1 |     United States |
-;;; |       |               |               |                   |
-;;; |       |        N218KD |          GLF4 |     United States |
-;;; |       |        N324CX |          GLF5 |     United States |
-;;; |       |        N383LS |          GLF5 |     United States |
-;;; |       |        N432HC |          GLF4 |     United States |
-;;; |       |        N448CJ |          C25C |     United States |
-;;; |       |        N460RG |          C25C |     United States |
-;;; |       |        N498TM |          BE40 |     United States |
-;;; |       |        N505RH |          C560 |     United States |
-;;; |       |         N508P |          GLF5 |     United States |
-;;; |       |        N525KR |          C25C |     United States |
-;;; |       |        N622CZ |          E170 |     United States |
-;;; |       |        N624CZ |          E170 |     United States |
-;;; |       |       92-9000 |          B742 | United States Mil |
-;;; |       |      95-00096 |          BE20 | United States Mil |
-;;; |       |       84-0125 |          LJ35 | United States Mil |
-;;; |       |        165093 |          GLF4 | United States Mil |
-;;; |       |        165093 |          GLF4 | United States Mil |
-;;; |       |       85-0027 |          DC10 | United States Mil |
-;;; |       |        164408 |            E6 | United States Mil |
-;;; |       |        164408 |            E6 | United States Mil |
-;;; |       |        164410 |            E6 | United States Mil |
-;;; |       |        164410 |            E6 | United States Mil |
-;;; |       |        165831 |          B737 | United States Mil |
-;;; |       |       59-1462 |          K35R | United States Mil |
-;;; |       |            01 |          GLF5 | United States Mil |
-;;; |       |            01 |          GLF5 | United States Mil |
-;;; |       |        166375 |          GLF5 | United States Mil |
-;;; |       |        166375 |          GLF5 | United States Mil |
-;;; |       |       02-1863 |          GLF5 | United States Mil |
-;;; |       |       02-1863 |          GLF5 | United States Mil |
-;;; |       |        166376 |          GLF5 | United States Mil |
-;;; |       |        166376 |          GLF5 | United States Mil |
-;;; |       |        166376 |          GLF5 | United States Mil |
-;;; |       |        166765 |          C30J | United States Mil |
-;;; |       |        167924 |          C30J | United States Mil |
-;;; |       |      10-72167 |          EC45 | United States Mil |
-;;; |       |        166695 |          B737 | United States Mil |
-;;; |       |       08-8195 |           C17 | United States Mil |
-;;; |       |        168759 |            P8 | United States Mil |
-;;; |       |        168759 |            P8 | United States Mil |
-;;; |       |        155481 |           V10 | United States Mil |
-;;; |       |        155481 |           V10 | United States Mil |
-;;; |       |       57-2603 |          K35R | United States Mil |
-;;; |       |        144618 |          CL60 |        Canada Mil |
-;;; |       |        144618 |          CL60 |        Canada Mil |
-;;; 
-;; <-
 ;; =>
-;;; {"type":"html","content":"<span class='clj-nil'>nil</span>","value":"nil"}
+;;; {"type":"html","content":"<table><tr><th>Photo</th><th>ICAO</th><th>Reg</th><th>Type</th><th>Country</th></tr><tr><td><img src=\"http://www.airport-data.com/images/aircraft/thumbnails/000/641/641644.jpg\"></td><td>249249</td><td>00000000</td><td></td><td></td></tr><tr><td><img src=\"\"></td><td>A030F2</td><td>00000000</td><td>PRM1</td><td>United States</td></tr><tr><td><img src=\"\"></td><td>A1102E</td><td>505243D1</td><td></td><td></td></tr><tr><td><img src=\"http://www.airport-data.com/images/aircraft/thumbnails/000/968/968326.jpg\"></td><td>A1D81F</td><td>00000000</td><td>GLF4</td><td>United States</td></tr><tr><td><img src=\"\"></td><td>A37D74</td><td>50676564</td><td>GLF5</td><td>United States</td></tr><tr><td><img src=\"http://www.airport-data.com/images/aircraft/thumbnails/000/836/836741.jpg\"></td><td>A4677A</td><td>61063572</td><td>GLF5</td><td>United States</td></tr><tr><td><img src=\"\"></td><td>A52B3E</td><td>00000000</td><td>GLF4</td><td>United States</td></tr><tr><td><img src=\"\"></td><td>A56890</td><td>00000000</td><td>C25C</td><td>United States</td></tr><tr><td><img src=\"\"></td><td>A59B19</td><td>00000000</td><td>C25C</td><td>United States</td></tr><tr><td><img src=\"\"></td><td>A62F85</td><td>00000000</td><td>BE40</td><td>United States</td></tr><tr><td><img src=\"\"></td><td>A64E02</td><td>5600813</td><td>C560</td><td>United States</td></tr><tr><td><img src=\"http://www.airport-data.com/images/aircraft/thumbnails/000/702/702053.jpg\"></td><td>A658ED</td><td>00000000</td><td>GLF5</td><td>United States</td></tr><tr><td><img src=\"http://www.airport-data.com/images/aircraft/thumbnails/000/926/926611.jpg\"></td><td>A69C72</td><td>00000000</td><td>C25C</td><td>United States</td></tr><tr><td><img src=\"http://www.airport-data.com/images/aircraft/thumbnails/000/946/946129.jpg\"></td><td>A81DF5</td><td>581842</td><td>E170</td><td>United States</td></tr><tr><td><img src=\"http://www.airport-data.com/images/aircraft/thumbnails/001/047/001047143.jpg\"></td><td>A82563</td><td>576468A</td><td>E170</td><td>United States</td></tr><tr><td><img src=\"http://www.airport-data.com/images/aircraft/thumbnails/001/033/001033621.jpg\"></td><td>ADFDF9</td><td></td><td>B742</td><td>United States Mil</td></tr><tr><td><img src=\"\"></td><td>ADFE95</td><td>PAT810</td><td>BE20</td><td>United States Mil</td></tr><tr><td><img src=\"\"></td><td>AE0192</td><td>SPAR708</td><td>LJ35</td><td>United States Mil</td></tr><tr><td><img src=\"http://www.airport-data.com/images/aircraft/thumbnails/000/869/869040.jpg\"></td><td>AE01BF</td><td>CNV2124</td><td>GLF4</td><td>United States Mil</td></tr><tr><td><img src=\"http://www.airport-data.com/images/aircraft/thumbnails/000/869/869040.jpg\"></td><td>AE01BF</td><td></td><td>GLF4</td><td>United States Mil</td></tr><tr><td><img src=\"\"></td><td>AE021F</td><td>PETRO61</td><td>DC10</td><td>United States Mil</td></tr><tr><td><img src=\"http://www.airport-data.com/images/aircraft/thumbnails/000/677/677016.jpg\"></td><td>AE041A</td><td>GOTO FMS</td><td>E6</td><td>United States Mil</td></tr><tr><td><img src=\"http://www.airport-data.com/images/aircraft/thumbnails/000/677/677016.jpg\"></td><td>AE041A</td><td></td><td>E6</td><td>United States Mil</td></tr><tr><td><img src=\"http://www.airport-data.com/images/aircraft/thumbnails/000/586/586227.jpg\"></td><td>AE041C</td><td>GOTO FMS</td><td>E6</td><td>United States Mil</td></tr><tr><td><img src=\"http://www.airport-data.com/images/aircraft/thumbnails/000/586/586227.jpg\"></td><td>AE041C</td><td></td><td>E6</td><td>United States Mil</td></tr><tr><td><img src=\"http://www.airport-data.com/images/aircraft/thumbnails/000/949/949424.jpg\"></td><td>AE04D9</td><td>CNV4001</td><td>B737</td><td>United States Mil</td></tr><tr><td><img src=\"\"></td><td>AE0658</td><td>GHOST53</td><td>K35R</td><td>United States Mil</td></tr><tr><td><img src=\"\"></td><td>AE10C1</td><td>C101</td><td>GLF5</td><td>United States Mil</td></tr><tr><td><img src=\"\"></td><td>AE10C1</td><td></td><td>GLF5</td><td>United States Mil</td></tr><tr><td><img src=\"http://www.airport-data.com/images/aircraft/thumbnails/000/969/969080.jpg\"></td><td>AE10C2</td><td>VV100</td><td>GLF5</td><td>United States Mil</td></tr><tr><td><img src=\"http://www.airport-data.com/images/aircraft/thumbnails/000/969/969080.jpg\"></td><td>AE10C2</td><td></td><td>GLF5</td><td>United States Mil</td></tr><tr><td><img src=\"http://www.airport-data.com/images/aircraft/thumbnails/000/789/789192.jpg\"></td><td>AE118A</td><td>PAT63</td><td>GLF5</td><td>United States Mil</td></tr><tr><td><img src=\"http://www.airport-data.com/images/aircraft/thumbnails/000/789/789192.jpg\"></td><td>AE118A</td><td></td><td>GLF5</td><td>United States Mil</td></tr><tr><td><img src=\"http://www.airport-data.com/images/aircraft/thumbnails/001/007/001007877.jpg\"></td><td>AE1258</td><td>VV100</td><td>GLF5</td><td>United States Mil</td></tr><tr><td><img src=\"http://www.airport-data.com/images/aircraft/thumbnails/001/007/001007877.jpg\"></td><td>AE1258</td><td>VV376</td><td>GLF5</td><td>United States Mil</td></tr><tr><td><img src=\"http://www.airport-data.com/images/aircraft/thumbnails/001/007/001007877.jpg\"></td><td>AE1258</td><td></td><td>GLF5</td><td>United States Mil</td></tr><tr><td><img src=\"http://www.airport-data.com/images/aircraft/thumbnails/000/587/587545.jpg\"></td><td>AE1482</td><td>RAIDR49</td><td>C30J</td><td>United States Mil</td></tr><tr><td><img src=\"http://www.airport-data.com/images/aircraft/thumbnails/000/451/451450.jpg\"></td><td>AE1BA9</td><td>RAIDR41</td><td>C30J</td><td>United States Mil</td></tr><tr><td><img src=\"\"></td><td>AE1FB6</td><td></td><td>EC45</td><td>United States Mil</td></tr><tr><td><img src=\"http://www.airport-data.com/images/aircraft/thumbnails/000/695/695401.jpg\"></td><td>AE29FE</td><td>CNV4041</td><td>B737</td><td>United States Mil</td></tr><tr><td><img src=\"http://www.airport-data.com/images/aircraft/thumbnails/000/877/877669.jpg\"></td><td>AE2FA7</td><td></td><td>C17</td><td>United States Mil</td></tr><tr><td><img src=\"\"></td><td>AE4EC4</td><td>TIGER05</td><td>P8</td><td>United States Mil</td></tr><tr><td><img src=\"\"></td><td>AE4EC4</td><td></td><td>P8</td><td>United States Mil</td></tr><tr><td><img src=\"\"></td><td>AE5400</td><td>155481</td><td>V10</td><td>United States Mil</td></tr><tr><td><img src=\"\"></td><td>AE5400</td><td></td><td>V10</td><td>United States Mil</td></tr><tr><td><img src=\"\"></td><td>B18269</td><td>BAJA42</td><td>K35R</td><td>United States Mil</td></tr><tr><td><img src=\"\"></td><td>C2B373</td><td>CFC3074</td><td>CL60</td><td>Canada Mil</td></tr><tr><td><img src=\"\"></td><td>C2B373</td><td></td><td>CL60</td><td>Canada Mil</td></tr></table>","value":"#gorilla_repl.html.HtmlView{:content \"<table><tr><th>Photo</th><th>ICAO</th><th>Reg</th><th>Type</th><th>Country</th></tr><tr><td><img src=\\\"http://www.airport-data.com/images/aircraft/thumbnails/000/641/641644.jpg\\\"></td><td>249249</td><td>00000000</td><td></td><td></td></tr><tr><td><img src=\\\"\\\"></td><td>A030F2</td><td>00000000</td><td>PRM1</td><td>United States</td></tr><tr><td><img src=\\\"\\\"></td><td>A1102E</td><td>505243D1</td><td></td><td></td></tr><tr><td><img src=\\\"http://www.airport-data.com/images/aircraft/thumbnails/000/968/968326.jpg\\\"></td><td>A1D81F</td><td>00000000</td><td>GLF4</td><td>United States</td></tr><tr><td><img src=\\\"\\\"></td><td>A37D74</td><td>50676564</td><td>GLF5</td><td>United States</td></tr><tr><td><img src=\\\"http://www.airport-data.com/images/aircraft/thumbnails/000/836/836741.jpg\\\"></td><td>A4677A</td><td>61063572</td><td>GLF5</td><td>United States</td></tr><tr><td><img src=\\\"\\\"></td><td>A52B3E</td><td>00000000</td><td>GLF4</td><td>United States</td></tr><tr><td><img src=\\\"\\\"></td><td>A56890</td><td>00000000</td><td>C25C</td><td>United States</td></tr><tr><td><img src=\\\"\\\"></td><td>A59B19</td><td>00000000</td><td>C25C</td><td>United States</td></tr><tr><td><img src=\\\"\\\"></td><td>A62F85</td><td>00000000</td><td>BE40</td><td>United States</td></tr><tr><td><img src=\\\"\\\"></td><td>A64E02</td><td>5600813</td><td>C560</td><td>United States</td></tr><tr><td><img src=\\\"http://www.airport-data.com/images/aircraft/thumbnails/000/702/702053.jpg\\\"></td><td>A658ED</td><td>00000000</td><td>GLF5</td><td>United States</td></tr><tr><td><img src=\\\"http://www.airport-data.com/images/aircraft/thumbnails/000/926/926611.jpg\\\"></td><td>A69C72</td><td>00000000</td><td>C25C</td><td>United States</td></tr><tr><td><img src=\\\"http://www.airport-data.com/images/aircraft/thumbnails/000/946/946129.jpg\\\"></td><td>A81DF5</td><td>581842</td><td>E170</td><td>United States</td></tr><tr><td><img src=\\\"http://www.airport-data.com/images/aircraft/thumbnails/001/047/001047143.jpg\\\"></td><td>A82563</td><td>576468A</td><td>E170</td><td>United States</td></tr><tr><td><img src=\\\"http://www.airport-data.com/images/aircraft/thumbnails/001/033/001033621.jpg\\\"></td><td>ADFDF9</td><td></td><td>B742</td><td>United States Mil</td></tr><tr><td><img src=\\\"\\\"></td><td>ADFE95</td><td>PAT810</td><td>BE20</td><td>United States Mil</td></tr><tr><td><img src=\\\"\\\"></td><td>AE0192</td><td>SPAR708</td><td>LJ35</td><td>United States Mil</td></tr><tr><td><img src=\\\"http://www.airport-data.com/images/aircraft/thumbnails/000/869/869040.jpg\\\"></td><td>AE01BF</td><td>CNV2124</td><td>GLF4</td><td>United States Mil</td></tr><tr><td><img src=\\\"http://www.airport-data.com/images/aircraft/thumbnails/000/869/869040.jpg\\\"></td><td>AE01BF</td><td></td><td>GLF4</td><td>United States Mil</td></tr><tr><td><img src=\\\"\\\"></td><td>AE021F</td><td>PETRO61</td><td>DC10</td><td>United States Mil</td></tr><tr><td><img src=\\\"http://www.airport-data.com/images/aircraft/thumbnails/000/677/677016.jpg\\\"></td><td>AE041A</td><td>GOTO FMS</td><td>E6</td><td>United States Mil</td></tr><tr><td><img src=\\\"http://www.airport-data.com/images/aircraft/thumbnails/000/677/677016.jpg\\\"></td><td>AE041A</td><td></td><td>E6</td><td>United States Mil</td></tr><tr><td><img src=\\\"http://www.airport-data.com/images/aircraft/thumbnails/000/586/586227.jpg\\\"></td><td>AE041C</td><td>GOTO FMS</td><td>E6</td><td>United States Mil</td></tr><tr><td><img src=\\\"http://www.airport-data.com/images/aircraft/thumbnails/000/586/586227.jpg\\\"></td><td>AE041C</td><td></td><td>E6</td><td>United States Mil</td></tr><tr><td><img src=\\\"http://www.airport-data.com/images/aircraft/thumbnails/000/949/949424.jpg\\\"></td><td>AE04D9</td><td>CNV4001</td><td>B737</td><td>United States Mil</td></tr><tr><td><img src=\\\"\\\"></td><td>AE0658</td><td>GHOST53</td><td>K35R</td><td>United States Mil</td></tr><tr><td><img src=\\\"\\\"></td><td>AE10C1</td><td>C101</td><td>GLF5</td><td>United States Mil</td></tr><tr><td><img src=\\\"\\\"></td><td>AE10C1</td><td></td><td>GLF5</td><td>United States Mil</td></tr><tr><td><img src=\\\"http://www.airport-data.com/images/aircraft/thumbnails/000/969/969080.jpg\\\"></td><td>AE10C2</td><td>VV100</td><td>GLF5</td><td>United States Mil</td></tr><tr><td><img src=\\\"http://www.airport-data.com/images/aircraft/thumbnails/000/969/969080.jpg\\\"></td><td>AE10C2</td><td></td><td>GLF5</td><td>United States Mil</td></tr><tr><td><img src=\\\"http://www.airport-data.com/images/aircraft/thumbnails/000/789/789192.jpg\\\"></td><td>AE118A</td><td>PAT63</td><td>GLF5</td><td>United States Mil</td></tr><tr><td><img src=\\\"http://www.airport-data.com/images/aircraft/thumbnails/000/789/789192.jpg\\\"></td><td>AE118A</td><td></td><td>GLF5</td><td>United States Mil</td></tr><tr><td><img src=\\\"http://www.airport-data.com/images/aircraft/thumbnails/001/007/001007877.jpg\\\"></td><td>AE1258</td><td>VV100</td><td>GLF5</td><td>United States Mil</td></tr><tr><td><img src=\\\"http://www.airport-data.com/images/aircraft/thumbnails/001/007/001007877.jpg\\\"></td><td>AE1258</td><td>VV376</td><td>GLF5</td><td>United States Mil</td></tr><tr><td><img src=\\\"http://www.airport-data.com/images/aircraft/thumbnails/001/007/001007877.jpg\\\"></td><td>AE1258</td><td></td><td>GLF5</td><td>United States Mil</td></tr><tr><td><img src=\\\"http://www.airport-data.com/images/aircraft/thumbnails/000/587/587545.jpg\\\"></td><td>AE1482</td><td>RAIDR49</td><td>C30J</td><td>United States Mil</td></tr><tr><td><img src=\\\"http://www.airport-data.com/images/aircraft/thumbnails/000/451/451450.jpg\\\"></td><td>AE1BA9</td><td>RAIDR41</td><td>C30J</td><td>United States Mil</td></tr><tr><td><img src=\\\"\\\"></td><td>AE1FB6</td><td></td><td>EC45</td><td>United States Mil</td></tr><tr><td><img src=\\\"http://www.airport-data.com/images/aircraft/thumbnails/000/695/695401.jpg\\\"></td><td>AE29FE</td><td>CNV4041</td><td>B737</td><td>United States Mil</td></tr><tr><td><img src=\\\"http://www.airport-data.com/images/aircraft/thumbnails/000/877/877669.jpg\\\"></td><td>AE2FA7</td><td></td><td>C17</td><td>United States Mil</td></tr><tr><td><img src=\\\"\\\"></td><td>AE4EC4</td><td>TIGER05</td><td>P8</td><td>United States Mil</td></tr><tr><td><img src=\\\"\\\"></td><td>AE4EC4</td><td></td><td>P8</td><td>United States Mil</td></tr><tr><td><img src=\\\"\\\"></td><td>AE5400</td><td>155481</td><td>V10</td><td>United States Mil</td></tr><tr><td><img src=\\\"\\\"></td><td>AE5400</td><td></td><td>V10</td><td>United States Mil</td></tr><tr><td><img src=\\\"\\\"></td><td>B18269</td><td>BAJA42</td><td>K35R</td><td>United States Mil</td></tr><tr><td><img src=\\\"\\\"></td><td>C2B373</td><td>CFC3074</td><td>CL60</td><td>Canada Mil</td></tr><tr><td><img src=\\\"\\\"></td><td>C2B373</td><td></td><td>CL60</td><td>Canada Mil</td></tr></table>\"}"}
 ;; <=
 
 ;; @@
+(safe-aircraft-info "AE5400")
+
 (pprint/print-table
   [:icao :registration :icaotypecode :modescountry]
   (jdbc/query db "select reports.icao, Aircraft.registration, Aircraft.icaotypecode, Aircraft.modescountry from reports inner join Aircraft on reports.icao = Aircraft.modes where Aircraft.modescountry like '%Mil%' group by reports.icao, Aircraft.registration, Aircraft.modescountry, Aircraft.icaotypecode;"))
@@ -464,6 +386,25 @@
 ;; @@
 ;; =>
 ;;; {"type":"list-like","open":"<span class='clj-map'>{</span>","close":"<span class='clj-map'>}</span>","separator":", ","items":[{"type":"list-like","open":"","close":"","separator":" ","items":[{"type":"html","content":"<span class='clj-string'>&quot;status&quot;</span>","value":"\"status\""},{"type":"html","content":"<span class='clj-long'>200</span>","value":"200"}],"value":"[\"status\" 200]"},{"type":"list-like","open":"","close":"","separator":" ","items":[{"type":"html","content":"<span class='clj-string'>&quot;count&quot;</span>","value":"\"count\""},{"type":"html","content":"<span class='clj-long'>1</span>","value":"1"}],"value":"[\"count\" 1]"},{"type":"list-like","open":"","close":"","separator":" ","items":[{"type":"html","content":"<span class='clj-string'>&quot;data&quot;</span>","value":"\"data\""},{"type":"list-like","open":"<span class='clj-vector'>[</span>","close":"<span class='clj-vector'>]</span>","separator":" ","items":[{"type":"list-like","open":"<span class='clj-map'>{</span>","close":"<span class='clj-map'>}</span>","separator":", ","items":[{"type":"list-like","open":"","close":"","separator":" ","items":[{"type":"html","content":"<span class='clj-string'>&quot;image&quot;</span>","value":"\"image\""},{"type":"html","content":"<span class='clj-string'>&quot;http://www.airport-data.com/images/aircraft/thumbnails/000/504/504641.jpg&quot;</span>","value":"\"http://www.airport-data.com/images/aircraft/thumbnails/000/504/504641.jpg\""}],"value":"[\"image\" \"http://www.airport-data.com/images/aircraft/thumbnails/000/504/504641.jpg\"]"},{"type":"list-like","open":"","close":"","separator":" ","items":[{"type":"html","content":"<span class='clj-string'>&quot;link&quot;</span>","value":"\"link\""},{"type":"html","content":"<span class='clj-string'>&quot;http://www.airport-data.com/aircraft/photo/000504641.html&quot;</span>","value":"\"http://www.airport-data.com/aircraft/photo/000504641.html\""}],"value":"[\"link\" \"http://www.airport-data.com/aircraft/photo/000504641.html\"]"},{"type":"list-like","open":"","close":"","separator":" ","items":[{"type":"html","content":"<span class='clj-string'>&quot;photographer&quot;</span>","value":"\"photographer\""},{"type":"html","content":"<span class='clj-string'>&quot;Doug Robertson&quot;</span>","value":"\"Doug Robertson\""}],"value":"[\"photographer\" \"Doug Robertson\"]"}],"value":"{\"image\" \"http://www.airport-data.com/images/aircraft/thumbnails/000/504/504641.jpg\", \"link\" \"http://www.airport-data.com/aircraft/photo/000504641.html\", \"photographer\" \"Doug Robertson\"}"}],"value":"[{\"image\" \"http://www.airport-data.com/images/aircraft/thumbnails/000/504/504641.jpg\", \"link\" \"http://www.airport-data.com/aircraft/photo/000504641.html\", \"photographer\" \"Doug Robertson\"}]"}],"value":"[\"data\" [{\"image\" \"http://www.airport-data.com/images/aircraft/thumbnails/000/504/504641.jpg\", \"link\" \"http://www.airport-data.com/aircraft/photo/000504641.html\", \"photographer\" \"Doug Robertson\"}]]"}],"value":"{\"status\" 200, \"count\" 1, \"data\" [{\"image\" \"http://www.airport-data.com/images/aircraft/thumbnails/000/504/504641.jpg\", \"link\" \"http://www.airport-data.com/aircraft/photo/000504641.html\", \"photographer\" \"Doug Robertson\"}]}"}
+;; <=
+
+;; **
+;;; ## Air Force One
+;;; 
+;; **
+
+;; @@
+(as-> (jdbc/query
+        db
+        "select * from reports where icao = 'ADFDF9' order by timestamp asc;") X
+      (map #(assoc % :timestamp (timecoerce/from-sql-time (:timestamp %))) X)
+      (filter #(and (> (Math/abs (:lat %)) 0.0) (> (Math/abs (:lon %)) 0.0)) X)
+      (log2kml/partition-sessions 300 X)
+      (for [reports X] (map (fn [r] [(:lat r) (:lon r)]) reports))
+      (apply lg/geo :width 800 :height 800 :opacity 0.5 (map (fn [t] [:line t]) X)))
+;; @@
+;; =>
+;;; {"type":"html","content":"<div>\n<div id='2a98dc6b-fb6f-45e4-a8b0-3cd4ef4d6276' style='height: 800px; width: 800px;'></div>\n<script type='text/javascript'>\n$(function () {\n  var cachedScript = function(url, options) {\n    // Allow user to set any option except for dataType, cache, and url\n    options = $.extend( options || {}, {\n      dataType: 'script',\n      cache: true,\n      url: url\n    });\n\n    // Use $.ajax() since it is more flexible than $.getScript\n    // Return the jqXHR object so we can chain callbacks\n    return jQuery.ajax(options);\n  };\n  var createMap = function() {\n    var map = L.map('2a98dc6b-fb6f-45e4-a8b0-3cd4ef4d6276')\n    L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png')\n        .addTo(map);\n    var geoJsons = [{\"type\":\"Feature\",\"geometry\":{\"type\":\"LineString\",\"coordinates\":[[-118.43374,33.9453],[-118.43378,33.94537],[-118.43378,33.9455],[-118.43374,33.94561],[-118.43371,33.94561],[-118.43367,33.94565],[-118.43364,33.94565],[-118.43364,33.94565],[-118.43367,33.94567],[-118.43363,33.94567],[-118.4336,33.94569],[-118.43356,33.94569],[-118.43298,33.94584],[-118.43269,33.94587],[-118.43249,33.94589],[-118.43236,33.94589],[-118.43222,33.94591],[-118.43216,33.9459],[-118.43206,33.94591],[-118.43196,33.94591],[-118.43182,33.94591],[-118.43169,33.94593],[-118.43112,33.94597],[-118.43101,33.94599],[-118.43088,33.94599],[-118.40294,33.94954],[-118.40293,33.94958],[-118.4029,33.94969],[-118.40289,33.94974],[-118.40292,33.94981],[-118.40339,33.95001],[-118.40341,33.94999],[-118.40386,33.94999],[-118.40393,33.94996],[-118.40405,33.94992],[-118.40421,33.94992],[-118.40498,33.94988],[-118.40554,33.94986],[-118.40554,33.94986],[-118.40622,33.94977],[-118.40624,33.94976],[-118.40624,33.94976],[-118.41008,33.94931],[-118.41115,33.94922],[-118.41116,33.94924],[-118.41199,33.94913],[-118.41362,33.94899],[-118.41485,33.94881],[-118.41569,33.94876],[-118.41642,33.94867]]}}];\n    var bounds = null;\n    for (var i = 0; i < geoJsons.length; i++) {\n      var geoJson = L.geoJson(\n      geoJsons[i],\n      {style: {'color': 'steelblue',\n               'opacity': 0.5}});\n      geoJson.addTo(map);\n      console.log('Added GeoJSON:');\n      console.log(geoJsons[i]);\n      if (!bounds) {\n        bounds = geoJson.getBounds();\n      } else {\n        bounds.extend(geoJson.getBounds());\n      }\n    }\n    if (null) {\n      map.setView.apply(map, null);\n    } else {\n      console.log('setting bounds to ' + bounds);\n      console.log(bounds);\n      map.fitBounds(bounds);\n    }\n  };\n  if (!document.getElementById('leaflet-css')) {\n    $('<link>')\n      .attr('rel', 'stylesheet')\n      .attr('href', 'http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.css')\n      .attr('id', 'leaflet-css')\n      .appendTo('head');\n  }\n  if (!window.leafletJsLoaded) {\n    if (!window.leafletJsIsLoading) {\n      window.leafletJsLoadedCallbacks = [createMap];\n      window.leafletJsIsLoading = true;\n      cachedScript('http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.js')\n        .done(function() {\n          window.leafletJsIsLoading = false;\n          window.leafletJsLoaded = true;\n          _.each(window.leafletJsLoadedCallbacks, function(cb) { cb(); });\n          window.leafletJsLoadedCallbacks = [];\n        })\n        .fail(function() { console.log('failed'); });\n    } else {\n      window.leafletJsLoadedCallbacks.push(createMap);\n    }\n  } else {\n    createMap();\n  }\n});\n</script>\n</div>","value":"#com.lemondronor.leaflet_gorilla.LeafletView{:geodescs ({:type :line, :desc ([33.9453 -118.43374] [33.94537 -118.43378] [33.9455 -118.43378] [33.94561 -118.43374] [33.94561 -118.43371] [33.94565 -118.43367] [33.94565 -118.43364] [33.94565 -118.43364] [33.94567 -118.43367] [33.94567 -118.43363] [33.94569 -118.4336] [33.94569 -118.43356] [33.94584 -118.43298] [33.94587 -118.43269] [33.94589 -118.43249] [33.94589 -118.43236] [33.94591 -118.43222] [33.9459 -118.43216] [33.94591 -118.43206] [33.94591 -118.43196] [33.94591 -118.43182] [33.94593 -118.43169] [33.94597 -118.43112] [33.94599 -118.43101] [33.94599 -118.43088] [33.94954 -118.40294] [33.94958 -118.40293] [33.94969 -118.4029] [33.94974 -118.40289] [33.94981 -118.40292] [33.95001 -118.40339] [33.94999 -118.40341] [33.94999 -118.40386] [33.94996 -118.40393] [33.94992 -118.40405] [33.94992 -118.40421] [33.94988 -118.40498] [33.94986 -118.40554] [33.94986 -118.40554] [33.94977 -118.40622] [33.94976 -118.40624] [33.94976 -118.40624] [33.94931 -118.41008] [33.94922 -118.41115] [33.94924 -118.41116] [33.94913 -118.41199] [33.94899 -118.41362] [33.94881 -118.41485] [33.94876 -118.41569] [33.94867 -118.41642])}), :opts {:opacity 0.5, :height 800, :width 800}}"}
 ;; <=
 
 ;; @@
