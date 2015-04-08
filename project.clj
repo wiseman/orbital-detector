@@ -15,7 +15,7 @@
                  [org.clojure/tools.logging "0.3.1"]
                  [org.xerial/sqlite-jdbc "3.8.7"]
                  [postgresql "9.3-1102.jdbc41"]]
-  :plugins [[lein-gorilla "0.3.4"]]
+  :plugins [[lein-gorilla "0.3.4" :exclusions [cider-nrepl]]]
   :main ^:skip-aot com.lemondronor.orbital-detector
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}}
