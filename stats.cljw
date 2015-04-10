@@ -13,9 +13,9 @@
 ;;; 
 ;;; I have a small antenna outside on my deck. [`dump1090`](https://github.com/MalcolmRobb/dump1090) runs on the BeagleBone and feeds data to [PlanePlotter](http://www.coaa.co.uk/planeplotter.htm).  I periodically feed the Planeplotter logs into a postgres database.
 ;;; 
-;;; This is a map showing every transponder ping I received in March 2015 (created with [tippecanoe](https://github.com/mapbox/tippecanoe)):
+;;; This is a map showing every transponder ping I received in March 2015 (created with [tippecanoe](https://github.com/mapbox/tippecanoe)).  Try zooming all the way in on LAX (the bright spot) to see the amount of detail.
 ;;; 
-;;; <embed src="https://api.tiles.mapbox.com/v4/wiseman.61620a88/page.html?access_token=pk.eyJ1Ijoid2lzZW1hbiIsImEiOiJHbzAtOHgwIn0.Pj1Nx77LS1-ujzRKJVOttA#10/33.9633/-118.4230" width="500" height="500"></embed>
+;;; <iframe width="100%" height="500px" frameBorder="0" src="https://api.tiles.mapbox.com/v4/wiseman.61620a88/page.html?access_token=pk.eyJ1Ijoid2lzZW1hbiIsImEiOiJHbzAtOHgwIn0.Pj1Nx77LS1-ujzRKJVOttA#10/33.9365/-118.3736"></iframe>
 ;;; 
 ;;; The rest of this worksheet is miscellaneous explorations of the data using clojure.
 ;; **
