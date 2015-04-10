@@ -108,4 +108,4 @@
         1)
     (let [csv-path (first args)
           db-path (second args)]
-      (update-db! (db/db-spec db-path) csv-path))))
+      (update-db! (db/sqlite-db-spec db-path) csv-path))))

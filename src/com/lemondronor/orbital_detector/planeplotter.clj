@@ -16,18 +16,21 @@
 
 
 (defn parse-log-csv [csv]
-  {:timestamp (timefmt/parse
-               datetime-fmt (string/join " " [(csv 0) (csv 1)]))
-   :icao (csv 3)
-   :registration (let [r (string/trim (csv 4))]
-                   (if (pos? (count r))
-                     r
-                     nil))
-   :altitude (Long/parseLong (csv 7))
-   :position {:lat (Double/parseDouble (csv 9))
-              :lon (Double/parseDouble (csv 10))}
-   :speed (Double/parseDouble (csv 13))
-   :heading (Double/parseDouble (csv 14))})
+  (let [timestamp (timefmt/parse
+                   datetime-fmt (string/join " " [(csv 0) (csv 1)]))
+        registration (let [r (string/trim (csv 4))]
+                       (if (pos? (count r))
+                         r
+                         nil))]
+    {:timestamp timestamp
+     :icao (csv 3)
+     :registration registration
+     :altitude (Long/parseLong (csv 7))
+     :lat (Double/parseDouble (csv 9))
+     :lon (Double/parseDouble (csv 10))
+     :speed (Double/parseDouble (csv 13))
+     :heading (Double/parseDouble (csv 14))
+     :squawk (csv 16)}))
 
 
 (defn gzip-reader [path]
@@ -52,7 +55,7 @@
 
 
 (defn report-db-spec [path]
-  (db/db-spec path))
+  (db/sqlite-db-spec path))
 
 
 (defn parse-report-db-record [r]

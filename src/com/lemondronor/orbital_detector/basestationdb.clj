@@ -26,5 +26,5 @@
 
 (defn load-db [path]
   (jdbc/query
-   (db/db-spec path)
+   (db/sqlite-db-spec path)
    "SELECT * FROM Aircraft"))

@@ -18,37 +18,64 @@
   "Only 1 ping will be recorded for each aircraft during each interval of this long.")
 
 (gflags/define-boolean "with-position-only"
-  true
+  false
   "Only keep pings that have position information.")
 
 
-
-(def db-schema
-  {:reports
-   {:timestamp :datetime
-    :icao :text
-    :registration :text
-    :altitude :integer
-    :lat :real
-    :lon :real
-    :speed :real
-    :heading :real}})
+(def db-timestamp-formatter
+  (timefmt/formatters :basic-date-time))
 
 
-(defn log-record-to-db-record [r]
-  {:timestamp (long (/ (timecoerce/to-long (:timestamp r)) 1000))
-   :icao (:icao r)
-   :registration (:registration r)
-   :altitude (:altitude r)
-   :lat (:lat (:position r))
-   :lon (:lon (:position r))
-   :speed (:speed r)
-   :heading (:heading r)})
+(defn sql-name [x] (name x))
+
+
+(defn sql-str [x]
+  (if x
+    (str "'" (string/replace x #"'" "''") "'")
+    "NULL"))
 
 
 (defn has-position? [r]
-  (not (and (zero? (:lat (:position r)))
-            (zero? (:lon (:position r))))))
+  (not (and (zero? (:lat r))
+            (zero? (:lon r)))))
+
+
+(defn log-record-to-db-record [r]
+  (let [db-rec
+        {:timestamp (sql-str (timefmt/unparse db-timestamp-formatter (:timestamp r)))
+         :icao (sql-str (:icao r))
+         :registration (sql-str (:registration r))
+         :altitude (:altitude r)
+         :speed (:speed r)
+         :heading (:heading r)
+         :squawk (sql-str (:squawk r))}]
+    (if (has-position? r)
+      (assoc db-rec
+             :lat (:lat r)
+             :lon (:lon r)
+             :position (format "ST_SetSRID(ST_MakePoint(%s,%s), 4326)" (:lon r) (:lat r)))
+      (assoc db-rec
+             :lat "NULL"
+             :lon "NULL"
+             :position "NULL"))))
+
+
+;; I really did try to do the right thing and not work with SQL text,
+;; but man it was going to be a lot of work just to see if I could
+;; make using postgis data types work via JDBC.
+
+(defn insert-sql [table record]
+  (string/join
+   " "
+   ["INSERT INTO" (sql-name table)
+    "(" (string/join ", " (map sql-name (keys record))) ")"
+    "VALUES"
+    "(" (string/join ", " (vals record)) ")"]))
+
+
+(defn insert! [db table record]
+  (let [sql (insert-sql table record)]
+    (jdbc/execute! db [sql])))
 
 
 (defn add-records! [db log]
@@ -60,8 +87,8 @@
              previous-ping-time {}
              num-inserted 0
              num-skipped {:no-position 0
-                             :non-monotonic-time 0
-                             :rate-too-high 0}]
+                          :non-monotonic-time 0
+                          :rate-too-high 0}]
         (if (seq records)
           (let [r (first records)
                 rstrecords (rest records)
@@ -92,20 +119,7 @@
                      (update-in num-skipped [:rate-too-high] inc))
               :else
               (do
-                (jdbc/insert!
-                 t-con
-                 :reports
-                 {:timestamp (timefmt/unparse
-                              ;; 2015-03-20 11:39:00
-                              (timefmt/formatters :basic-date-time)
-                              (:timestamp r))
-                  :icao (:icao r)
-                  :registration (:registration r)
-                  :altitude (:altitude r)
-                  :lat (:lat (:position r))
-                  :lon (:lon (:position r))
-                  :speed (:speed r)
-                  :heading (:heading r)})
+                (insert! t-con :reports (log-record-to-db-record r))
                 (recur rstrecords
                        (assoc previous-ping-time icao ping-ts)
                        (inc num-inserted)
@@ -122,22 +136,10 @@
 
 (defn -main [& args]
   (let [args (gflags/parse-flags (cons nil args))
-        db (db/db-spec (first args))
+        db-url (first args)
         log-paths (rest args)]
-    (db/create-db! db db-schema)
     (doseq [log-path log-paths]
       (println "Importing" log-path)
       (add-records!
-       db
+       db-url
        (planeplotter/read-log log-path)))))
-
-(comment
-
-  (def geojson
-  (->> (com.lemondronor.orbital-detector.db/query-seq1
-        (com.lemondronor.orbital-detector.db/db-spec "pings.sqb")
-        "SELECT lat, lon FROM reports")
-       (map (fn [r] [(:lat r) (:lon r)]))
-       (map list)
-       (com.lemondronor.orbital-detector.geojson/geojson)))
-  )

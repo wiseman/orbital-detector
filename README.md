@@ -4,6 +4,42 @@
 
 Code for finding, analyzing and visualizing police aircraft over Los Angeles
 
+
+## Creating the database
+
+This code assumes you have postgres and postgis installed.
+
+
+### Prep the database
+
+```
+$ createdb orbital
+$ cat orbital.sql | psql orbital
+```
+
+
+### Load a basestation.sqb
+
+Put a basestation.sqb, from whatever source, in the current directory,
+then run the following:
+
+```
+$ pgloader basestation.load
+```
+
+
+#### Ingest PlanePlotter logs
+
+You can load PlanePlotter "receiver logs" AKA "Mode-S logs" AKA "RTL
+logs" into the database. You can load gzipped or uncompressed logs
+(log files typically get ~98% compression).
+
+```
+$ lein run -m com.lemondronor.orbital-detector.reports \
+  postgresql://localhost:5432/orbital logs/RTL*.gz
+```
+
+
 ## log2kml
 
 `log2kml` creates a KML visualization from one or more PlanePlotter logs.

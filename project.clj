@@ -13,6 +13,7 @@
                  [org.clojure/data.xml "0.0.8"]
                  [org.clojure/java.jdbc "0.3.6"]
                  [org.clojure/tools.logging "0.3.1"]
+                 [org.postgis/postgis-jdbc "1.3.3" :exclusions [postgresql/postgresql]]
                  [org.xerial/sqlite-jdbc "3.8.7"]
                  [postgresql "9.3-1102.jdbc41"]]
   :plugins [[lein-gorilla "0.3.4" :exclusions [cider-nrepl]]]
