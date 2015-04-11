@@ -39,6 +39,31 @@ $ lein run -m com.lemondronor.orbital-detector.reports \
   postgresql://localhost:5432/orbital logs/RTL*.gz
 ```
 
+Reports are put into the `reports` table, with the following schema:
+
+| Column       | Description                 |
+|--------------|-----------------------------|
+| timestamp    | timestamp with time zone    |
+| icao         | ICAO hex code (string)      |
+| registration | Callsign/registration       |
+| altitude     | Altitude                    |
+| lat          | Latitude                    |
+| lon          | Longitude                   |
+| position     | PostGIS geometry of lat/lon |
+| speed        | Speed                       |
+| heading      | Heading                     |
+| squawk       | [Squawk code](http://en.wikipedia.org/wiki/Transponder_%28aeronautics%29#Code_assignments) |
+
+
+By default, at most one ping per aircraft per second is saved. You can
+use `--time-window-secs` to do something different:
+`--time-window-secs 0` will keep every ping, `--time-window-secs 10`
+will keep only one ping per aircraft per 10 seconds.
+
+By default, all pings are saved, including positionless (mode A/C)
+pings. If you only want to save pings that have positions, use
+`--with-position-only`.
+
 
 ## log2kml
 
