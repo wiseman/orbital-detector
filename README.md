@@ -2,7 +2,7 @@
     - [Creating the database](#)
         - [Prep the database](#)
         - [Load a basestation.sqb](#)
-            - [Ingest PlanePlotter logs](#)
+        - [Ingest PlanePlotter logs](#)
     - [Visualizations](#)
         - [log2kml](#)
         - [Tippecanoe](#)
