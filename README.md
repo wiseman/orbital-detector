@@ -1,8 +1,6 @@
 # orbital detector
 
-![KML screenshot](/screenshots/log2kml.jpg?raw=true "KML screenshot")
-
-Code for finding, analyzing and visualizing police aircraft over Los Angeles
+Code for finding, analyzing and visualizing police aircraft over Los Angeles.
 
 
 ## Creating the database
@@ -39,7 +37,7 @@ $ lein run -m com.lemondronor.orbital-detector.reports \
   postgresql://localhost:5432/orbital logs/RTL*.gz
 ```
 
-Reports are put into the `reports` table, with the following schema:
+Reports are put into the `reports` table, which has the following schema:
 
 | Column       | Description                 |
 |--------------|-----------------------------|
@@ -65,9 +63,13 @@ pings. If you only want to save pings that have positions, use
 `--with-position-only`.
 
 
-## log2kml
+## Visualizations
 
-`log2kml` creates a KML visualization from one or more PlanePlotter logs.
+### log2kml
+
+![KML screenshot](/screenshots/log2kml.jpg?raw=true "KML screenshot")
+
+You can create KML tracks of aircraft with log2kml.
 
 ```
 $ lein run -m com.lemondronor.orbital-detector.log2kml \
@@ -85,6 +87,12 @@ The `--extended-data` flag can be used to provide extra information
 about aircraft. It should be the path to a CSV-exported version of a
 file that has the same structure as
 [this spreadsheet](https://docs.google.com/spreadsheets/d/1lAJzkdHX554RbqzRU3hIIl6Aen9b57d_oXbOQnQTzRY/edit?usp=sharing).
+
+
+### Tippecanoe
+
+<iframe width="100%" height="500px" frameBorder="0" src="https://api.tiles.mapbox.com/v4/wiseman.61620a88/page.html?access_token=pk.eyJ1Ijoid2lzZW1hbiIsImEiOiJHbzAtOHgwIn0.Pj1Nx77LS1-ujzRKJVOttA#10/33.9365/-118.3736"></iframe>
+
 
 ## License
 
