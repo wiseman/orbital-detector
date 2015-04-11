@@ -94,7 +94,7 @@ file that has the same structure as
 You can use [tippecanoe](https://github.com/mapbox/tippecanoe) to
 create highly detailed, zoomable maps.
 
-![tippecanoe map screenshot](/screenshots/tippecanoe-map.jpg&raw=true "tippecanoe map screenshot")
+![tippecanoe map screenshot](/screenshots/tippecanoe-map.jpg?raw=true "tippecanoe map screenshot")
 
 <iframe width="100%" height="500px" frameBorder="0" src="https://api.tiles.mapbox.com/v4/wiseman.61620a88/page.html?access_token=pk.eyJ1Ijoid2lzZW1hbiIsImEiOiJHbzAtOHgwIn0.Pj1Nx77LS1-ujzRKJVOttA#10/33.9365/-118.3736"></iframe>
 
