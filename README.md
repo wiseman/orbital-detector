@@ -35,7 +35,7 @@ $ pgloader basestation.load
 ```
 
 
-#### Ingest PlanePlotter logs
+### Ingest PlanePlotter logs
 
 You can load PlanePlotter "receiver logs" AKA "Mode-S logs" AKA "RTL
 logs" into the database. You can load gzipped or uncompressed logs
