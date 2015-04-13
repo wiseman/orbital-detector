@@ -108,6 +108,27 @@ create highly detailed, zoomable maps.
 <iframe width="100%" height="500px" frameBorder="0" src="https://api.tiles.mapbox.com/v4/wiseman.61620a88/page.html?access_token=pk.eyJ1Ijoid2lzZW1hbiIsImEiOiJHbzAtOHgwIn0.Pj1Nx77LS1-ujzRKJVOttA#10/33.9365/-118.3736"></iframe>
 
 
+### Gorilla REPL worksheet
+
+There is a Gorilla REPL worksheet to get you started with miscellaneous exploration and analysis.
+
+![Gorilla repl screenshot](/screenshots/worksheet-map.jpg?raw=true "Gorilla repl screenshot")
+![Gorilla repl screenshot](/screenshots/worksheet-hour-of-week.png?raw=true "Gorilla repl screenshot")
+
+You can preview it in the Gorilla REPL viewer, or you can run it yourself:
+
+```
+$ lein gorilla
+Gorilla-REPL: 0.3.4
+Started nREPL server on port 61968
+Running at http://127.0.0.1:61970/worksheet.html .
+Ctrl+C to exit.
+```
+
+Go to the specified URL, then type CTRL-g CTRL-l and load the
+worksheet called `stats.cljw`.
+
+
 ## License
 
 Copyright © 2015 John Wiseman
