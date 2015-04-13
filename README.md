@@ -6,6 +6,7 @@
     - [Visualizations](#)
         - [log2kml](#)
         - [Tippecanoe](#)
+        - [Gorilla REPL worksheet](#)
     - [License](#)
 
 # orbital detector
@@ -115,7 +116,9 @@ There is a Gorilla REPL worksheet to get you started with miscellaneous explorat
 ![Gorilla repl screenshot](/screenshots/worksheet-map.jpg?raw=true "Gorilla repl screenshot")
 ![Gorilla repl screenshot](/screenshots/worksheet-hour-of-week.png?raw=true "Gorilla repl screenshot")
 
-You can preview it in the Gorilla REPL viewer, or you can run it yourself:
+You can
+[preview it in the Gorilla REPL viewer](http://viewer.gorilla-repl.org/view.html?source=github&user=wiseman&repo=orbital-detector&path=stats.cljw),
+or you can run it yourself:
 
 ```
 $ lein gorilla
