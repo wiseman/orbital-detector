@@ -32,22 +32,22 @@
   (testing "find N520PD in basestation-1.sqb"
     (is (records-equiv? N521PD
                         (basestationdb/find-aircraft
-                         (db/db-spec "dev-resources/basestation-1.sqb")
+                         (db/sqlite-db-spec "dev-resources/basestation-1.sqb")
                          "A68DEE"))))
   (testing "find N521PD in basestation-1.sqb"
     (is (records-equiv? N520PD
                         (basestationdb/find-aircraft
-                         (db/db-spec "dev-resources/basestation-1.sqb")
+                         (db/sqlite-db-spec "dev-resources/basestation-1.sqb")
                          "A68A37"))))
   (testing "find N520PD in basestation-planebase.sqb"
     (is (records-equiv? N521PD
                         (basestationdb/find-aircraft
-                         (db/db-spec "dev-resources/basestation-planebase.sqb")
+                         (db/sqlite-db-spec "dev-resources/basestation-planebase.sqb")
                          "A68DEE"))))
   (testing "find on non-existent aircraft"
     (is (= nil
            (basestationdb/find-aircraft
-            (db/db-spec "dev-resources/basestation-1.sqb")
+            (db/sqlite-db-spec "dev-resources/basestation-1.sqb")
             "XXXXXX")))))
 
 
