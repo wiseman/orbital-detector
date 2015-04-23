@@ -29,10 +29,8 @@
     :else b))
 
 
-(defn point [r]
-  (spatial/spatial4j-point
-   (:lat (:position r))
-   (:lon (:position r))))
+(defn point [lat lon]
+  (spatial/spatial4j-point lat lon))
 
 
 (defn rad2deg [r]
