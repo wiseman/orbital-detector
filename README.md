@@ -42,6 +42,18 @@ You can load PlanePlotter "receiver logs" AKA "Mode-S logs" AKA "RTL
 logs" into the database. You can load gzipped or uncompressed logs
 (log files typically get ~98% compression).
 
+There is one annoying detail: You need to change the line endings in
+the log files from Windows (CRLF) to Unix (LF). Here's an example of
+doing that:
+
+```
+$ echo *.log | \
+  xargs -t -n 1 -P 4 -I {} \
+  sh -c "cat {} | tr -d '\r' | time gzip -9cv > {}.gz"
+```
+
+Then to load the logs in the database:
+
 ```
 $ lein run -m com.lemondronor.orbital-detector.reports \
   postgresql://localhost:5432/orbital logs/RTL*.gz
