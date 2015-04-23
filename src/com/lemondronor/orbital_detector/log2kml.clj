@@ -5,6 +5,7 @@
             [clj-time.format :as timefmt]
             [clojure.data.xml :as xml]
             [clojure.java.io :as io]
+            [clojure.java.jdbc :as jdbc]
             [clojure.pprint :as pprint]
             [clojure.string :as string]
             [com.lemondronor.orbital-detector.planeplotter :as planeplotter]
@@ -17,14 +18,13 @@
 (set! *warn-on-reflection* true)
 
 
-(gflags/define-list "icaos"
-  []
-  "Comma separated list of ICAOs to filter.")
-
-
 (gflags/define-string "extended-data"
   nil
   "")
+
+(gflags/define-string "session-timeout-seconds"
+  (* 3 60)
+  "The session timeout time in seconds.")
 
 
 (defn warn [& args]
@@ -60,12 +60,12 @@
 
 
 (defn has-position? [r]
-  (and (>= (Math/abs ^double (:lat (:position r))) 0.1)
-       (>= (Math/abs ^double (:lon (:position r))) 0.1)))
+  (and (:lat r) (:lon r)))
 
 
 (defn rgb-hex [rgb]
   (str "7f" (string/join (map #(format "%02x" %) rgb))))
+
 
 (defn rgb-hex [rgb]
   (str "d0" (format "%06x" rgb)))
@@ -103,17 +103,17 @@
 
 
 (defn coordinate [r]
-  (str (:lon (:position r))
+  (str (:lon r)
        ","
-       (:lat (:position r))
+       (:lat r)
        ","
        (feet-to-meters (:altitude r))))
 
 
 (defn point [r]
   (spatial/spatial4j-point
-   (:lat (:position r))
-   (:lon (:position r))))
+   (:lat r)
+   (:lon r)))
 
 
 (defn distance [r1 r2]
@@ -182,7 +182,7 @@
       (format "%.1f km flown"
               (/ (reduce
                   +
-                  (for [[_ reports] vehicle-groups]
+                  (for [reports vehicle-groups]
                     (reduce + (map distance reports (next reports)))))
                  1000.0)))]
     (map-indexed
@@ -193,7 +193,7 @@
          [:width 4]]
         [:PolyStyle
          [:color "7f00ff00"]]])
-     (take 100 path-colors))
+     (take (count tracks) path-colors))
     tracks]])
 
 
@@ -281,22 +281,30 @@
           println))))
 
 
+(defn positions-for-icao [db icao]
+  (let [position-reports
+        (jdbc/query
+         db
+         [(str "SELECT * FROM reports WHERE icao = ? "
+               "AND lat IS NOT NULL AND lon IS NOT NULL "
+               "ORDER BY timestamp ASC")
+          icao])]
+    (warn "Found" (count position-reports) "position reports for" icao)
+    (map #(assoc % :timestamp (timecoerce/from-sql-time (:timestamp %)))
+         position-reports)))
+
+
+
 (defn -main [& args]
-  (let [args (gflags/parse-flags (cons nil args))]
+  (let [args (gflags/parse-flags (cons nil args))
+        db-url (first args)
+        icaos (rest args)
+        session-timeout-seconds (gflags/flags :session-timeout-seconds)]
     (load-extended-data)
-    (let [vehicle-groups (->> args
-                              (mapcat planeplotter/read-log)
-                              (filter-icaos (gflags/flags :icaos))
-                              (filter has-position?)
-                              (print-count)
-                              (partition-all 1000)
-                              (mapcat distinct)
-                              (print-count)
-                              (group-by :icao))
+    (let [vehicle-groups (map #(positions-for-icao db-url %) icaos)
           kml-tracks (->> vehicle-groups
-                          (map second)
                           (map #(filter-speed 30000.0 %))
-                          (mapcat #(partition-sessions 600000 %))
+                          (mapcat #(partition-sessions session-timeout-seconds %))
                           (map distinct)
                           (filter #(> (count %) 10))
                           (map-indexed kmltrack))]
