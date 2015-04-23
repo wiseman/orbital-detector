@@ -15,46 +15,24 @@
    :subname path})
 
 
-(defn query-seq1 [db query]
-  (jdbc/query db query))
-
-
-(defn query-seq2 [db query]
+(defn streaming-query [db query fn]
   (let [db-con (doto (jdbc/get-connection db)
                  (.setAutoCommit false))]
-    (println db-con)
     (let [stmt (jdbc/prepare-statement
                 db-con
                 query
-                :fetch-size 1000
+                :fetch-size 10000
                 :concurrency :read-only
                 :result-type :forward-only)]
-    (jdbc/query
-     db-con
-     [stmt]
-     :as-arrays? true))))
+      (jdbcdep/with-query-results* [stmt] fn))))
 
 
-(defn mycnt [s]
-  (reduce (fn [c e] (inc c)) 0 s))
-
-
-(defn query-seq3 [db query]
-  (let [db-con (doto (jdbc/get-connection db)
-                 (.setAutoCommit false))]
-    (println db-con)
-    (let [stmt (jdbc/prepare-statement
-                db-con
-                query
-                :fetch-size 1000
-                :concurrency :read-only
-                :result-type :forward-only)]
-      (jdbcdep/with-query-results results [stmt]
-        (println (mycnt results))))))
-
-
-;; (def records (com.lemondronor.orbital-detector.db/query-seq
-;;                     {:classname   "org.sqlite.JDBC"
-;;                      :subprotocol "sqlite"
-;;                      :subname     "pings.sqb"}
-;;                     "select * from reports"))
+(defn -main [& args]
+  (let [db-url (first args)]
+    (println db-url)
+    (streaming-query
+     db-url
+     ;;"select timestamp, icao, lat, lon from reports where lat is not null and lon is not null order by timestamp asc"
+     "select distinct icao from reports where lat is not null and lon is not null"
+     (fn [rs]
+       (println (count rs))))))
