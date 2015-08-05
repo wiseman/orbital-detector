@@ -19,10 +19,10 @@
 
 (defn segment-bearing [a b]
   (geo/bearing
-   (:lat (:position a))
-   (:lon (:position a))
-   (:lat (:position b))
-   (:lon (:position b))))
+   (:lat a)
+   (:lon a)
+   (:lat b)
+   (:lon b)))
 
 
 (defn turn-angle [a b c]
@@ -58,6 +58,16 @@
         _ (println (sort < (map #(* (/ 180.0 Math/PI) (total-track-angle %)) potential-orbits)))]
     (println (first potential-orbits))
     (filter #(< (total-track-angle %) (* Math/PI -2.0)) potential-orbits)))
+
+
+(defn orbits [track]
+  (let [track (map #(assoc % :pos (geo/point (:lat %) (:lon %)))
+                   track)]
+    (loop [orbits []
+           track (map #(assoc % :pos (geo/point (:lat %) (:lon %)))
+                      track)]
+      ())))
+
 
 
 
