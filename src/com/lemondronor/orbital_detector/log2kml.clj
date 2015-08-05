@@ -240,18 +240,25 @@
 
 (defn kmltrack [idx reports]
   (let [icao (:icao (first reports))
-        registration (:registration (first reports))]
+        registration (:registration (first reports))
+        reports (distinct reports)]
     [:Placemark
      [:name (track-name reports)]
      [:description (track-description reports)]
      [:styleUrl (str "#color" idx)]
-     [:LineString
-      [:tessellate 1]
-      [:altitudeMode "relativeToGround"]
-      [:coordinates
-       (string/join
-        "\n"
-        (distinct (map coordinate reports)))]]]))
+     (if (> (count reports) 1)
+       [:LineString
+        [:tessellate 1]
+        [:altitudeMode "relativeToGround"]
+        [:coordinates
+         (string/join
+          "\n"
+          (map coordinate reports))]]
+       [:Point
+        [:coordinates
+         (string/join
+          "\n"
+          (map coordinate reports))]])]))
 
 
 (defn filter-icaos [icaos records]
@@ -306,7 +313,7 @@
                           (map #(filter-speed 30000.0 %))
                           (mapcat #(partition-sessions session-timeout-seconds %))
                           (map distinct)
-                          (filter #(> (count %) 10))
+                          (filter #(> (count %) 0))
                           (map-indexed kmltrack))]
       (-> (kmldoc vehicle-groups kml-tracks)
           render-kml
