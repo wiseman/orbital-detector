@@ -1,0 +1,174 @@
+;; gorilla-repl.fileformat = 1
+
+;; **
+;;; # Gorilla REPL
+;;; 
+;;; Welcome to gorilla :-)
+;;; 
+;;; Shift + enter evaluates code. Hit ctrl+g twice in quick succession or click the menu icon (upper-right corner) for more commands ...
+;;; 
+;;; It's a good habit to run each worksheet in its own namespace: feel free to use the declaration we've provided below if you'd like.
+;; **
+
+;; @@
+(ns mellow-peak
+  (:require
+    [clj-time.coerce :as timecoerce]
+    [clojure.java.jdbc :as jdbc]
+    [clojure.java.io :as io]
+    [clojure.pprint :as pprint]
+    [clojure.string :as string]
+    [com.lemondronor.orbital-detector.log2kml :as log2kml]
+    [com.lemondronor.leaflet-gorilla :as lg]
+    [gorilla-plot.core :as plot]))
+;; @@
+;; =>
+;;; {"type":"html","content":"<span class='clj-nil'>nil</span>","value":"nil"}
+;; <=
+
+;; **
+;;; # Get the list of aircraft registered to the Department of Homeland Security
+;;; 
+;;; I'm using the publicly available FAA registration records that are available for download here: http://www.faa.gov/licenses_certificates/aircraft_certification/aircraft_registry/releasable_aircraft_download/
+;;; 
+;;; In the downloadable archive, the file `MASTER.TXT` contains registration information.
+;;; 
+;;; I use a regular expression to find all aircraft registered to variations of DEPARTMENT OF HOMELAND SECURITY.  There are about 200 aircraft total.
+;; **
+
+;; @@
+(def dhs-pattern #"^((US|U S) )?DEP.*HOMELAND")
+(def faa-master-path "MASTER.txt")
+
+(def dhs-faa-records
+  (with-open [rdr (io/reader faa-master-path)]
+    (doall
+      (->> (line-seq rdr)
+           (map #(string/split % #","))
+           (filter #(re-find dhs-pattern (nth % 6)))))))
+
+(println "DHS names:")
+(doseq [r (sort (distinct (map #(nth % 6) dhs-faa-records)))]
+  	(println "  " r))
+
+(println "# DHS aircraft:" (count dhs-faa-records))
+
+(def dhs-aircraft (into {} (for [r dhs-faa-records] [(string/trim (nth r 33)) (str "N" (nth r 0))])))
+
+(println "DHS ICAOs:" (keys dhs-aircraft))
+(println "DHS tail numbers:" (vals dhs-aircraft))
+
+;; @@
+;; ->
+;;; DHS names:
+;;;    DEPARTMENT OF HOMELAND SECURITY                   
+;;;    DEPT OF HOMELAND SECURITY                         
+;;;    DEPT OF HOMELAND SECURITY CUSTOMS &amp; BORDER        
+;;;    U S DEPARTMENT OF HOMELAND SECURITY               
+;;;    U S DEPT OF HOMELAND SECURITY                     
+;;;    US DEPARTMENT OF HOMELAND SECURITY                
+;;; # DHS aircraft: 215
+;;; DHS ICAOs: (ABBA12 A6DCEA A72AA1 A49F69 A7EC31 A4913C A7E847 A9B9CF AA2CA8 A43DAB A29189 A5A043 A26528 A0E2D1 AA21AC AB1838 A44367 AAE6B7 A9B8ED A43BF9 A94805 A120A0 ACB0AC A9B933 A76C26 A4471E A94B0D A156FB A2B48F A7EBC8 AB9A01 A4A343 A78DAE A23A3F A6DEE0 A99257 A16FC0 A20BAE A7CFC2 AB7B5A A9B9D0 AA3B84 A681E2 A9C038 A16F99 AAC336 A3F66C A52256 A4A2DA A0E055 A89048 A9712D ABA16F AAEE25 A4BEF8 A0B92E A88FF8 A9C0D3 A7E7D9 A68BD9 AAFD01 A14BD6 A7C9C5 A7E869 A06956 A298FE AA2183 A94733 A7A9D4 A49516 A490B0 A43842 A9C07E A9B5C5 ACC500 A6B711 A48D3F A0F740 A7EEBE AAFBEA A6E254 AAF593 A0EBDC A49182 A45243 A4A366 A88FF4 A44E8C AB964A AA253A A5685A A4A691 AABF7F AB9293 A6DB63 A18260 AB00B8 AB8EDC A23B7F A4915F A4981E A9B8CA A9B5CC A4C246 A494F3 AAD24D A13719 A2918B ABB2A4 A1773B A9C015 A493FE AD9D8F A06994 AD1000 AB876E A233EA A7EB79 A4C2DC A68BA3 AB8B25 A7F195 ABBDC9 A4BAE2 A8F8F5 A4C670 A0694B A43FB0 AC5D96 A8EC40 A2981F A291C4 A2A0F4 A9C0D1 A1772E A4BE49 A4906A A68BE9 A9B5D4 A19D52 AAB811 AAC6ED A497D8 A8F8C3 ABB65B A68BE0 A9C05B A38744 ACF0A5 A14C05 AA61CE AB0968 A7E7F0 A8BE23 AAEA6E A68BDB A44AD5 AC8FFE A8F4CE A0693F A1FA63 A9B5B8 A48D62 AACE5B A49047 AA28F1 A59C92 A297FF A0E032 A4948A A9B5D0 AB9DB8 A16FCD A490F6 ABAEED A3F6A8 A9479C A9B9CE A15C88 A9B5BE AB8FB2 AA104E ABA77F A2376D A494D0 A88FEB A208B4 A9D347 AABBC8 A9B956 A490D3 A68BE8 AB1ADD A89069 A82F90 A6B741 A66B77 A70640 A8C2B2 AAF94A AA1DCC A15AB2 A05617 A9B5B4 A9C0D0 A9C0D4 A49539 A9717A AB83B7 A3F372 A6AE9D A94AEA A62B61 A6903D A13AD0)
+;;; DHS tail numbers: (N855BP N541PB N561A  N3972A N6098U N3937A N6087C N72594 N755AM N37201 N26494 N4614N N2531K N1560  N752CC N814A  N374HS N801MR N7253N N372HS N6977A N172AE N917A  N7255N N578AE N375HS N6982A N186AE N2734K N6095U N847BP N3983A N586RE N2423S N5416U N716A  N192BP N2306D N602MB N839SA N72595 N759AM N51824 N7272N N192A  N793AM N3543B N43SA  N3980A N1559  N65085 N7072  N849BP N803MR N4048L N146CB N6506V N72763 N60838 N5204G N807MR N183AE N6001L N6088B N1255K N267A  N752AM N6971A N593PC N3948A N3933A N371HS N7274N N7247R N9215Z N5314J N3925A N161V  N610A  N807AM N5424X N805MR N159CM N3939A N378HS N3984A N6506R N377HS N846BP N753AM N448AE N3990A N792AM N845BP N5408G N197CB N808MR N844BP N243DR N3938A N3953A N7252N N7247Y N4055L N3947A N797CW N178CB N26496 N853BP N194CB N7271N N3940A N9769N N1257B N9403Y N842BP N241CB N6093K N4059W N5202Y N843BP N6103X N856BP N4035W N6776T N4068W N12549 N373HS N896WD N674TC N2663Y N265CB N269FL N72761 N194BP N4043L N3931A N5204Y N72476 N203BS N790AM N794AM N3951A N6775C N854BP N5204P N7273N N3262M N93285 N183CB N7681U N810AM N6084W N6621A N802MR N5204J N376HS N9085U N6763L N1254X N2265S N7247C N3926A N796AM N3930A N754AM N4604U N26621 N1558  N3944A N72472 N848BP N192CB N3935A N852BP N35442 N6974A N72593 N187V  N7247J N844LC N748AM N850BP N242A  N3946A N6506G N230CB N732JF N791AM N7256N N3934A N5204X N8142G N65093 N6265B N5315X N51216 N5515Y N6637G N806MR N751AM N187AE N1200N N72469 N72760 N72764 N3949A N7074G N841BP N3538R N53FM  N6981A N497PC N5219E N179CB)
+;;; 
+;; <-
+;; =>
+;;; {"type":"html","content":"<span class='clj-nil'>nil</span>","value":"nil"}
+;; <=
+
+;; **
+;;; # Determine which DHS aircraft I've observed
+;;; 
+;;; This is the list of DHS aircraft whose transponder signals I've picked up directly, along with some other information for each of those aircraft.
+;; **
+
+;; @@
+(def db "postgresql://localhost:5432/orbital")
+
+(def dhs-icao-sql (str "(" (string/join "," (map #(str "'" % "'") (keys dhs-aircraft))) ") "))
+
+(pprint/print-table
+  [:icao :registration :callsign :first_seen :last_seen :num_days_seen :median_altitude :ping_count]
+  (map
+    #(assoc % :registration (dhs-aircraft (:icao %)))
+    (jdbc/query
+      db
+      (str "select icao, registration as callsign, min(timestamp) as first_seen, max(timestamp) as last_seen, "
+           "count(distinct date_trunc('day', timestamp)) as num_days_seen, percentile_cont(0.5) within group (order by altitude) as median_altitude, "
+           "count(*) as ping_count from reports where icao in "
+           dhs-icao-sql
+           "group by icao, callsign"))))
+;; @@
+;; ->
+;;; 
+;;; |  :icao | :registration | :callsign |           :first_seen |            :last_seen | :num_days_seen | :median_altitude | :ping_count |
+;;; |--------+---------------+-----------+-----------------------+-----------------------+----------------+------------------+-------------|
+;;; | A49047 |        N3930A |           | 2015-06-19 13:05:17.0 | 2015-06-19 13:12:23.0 |              1 |           4600.0 |         308 |
+;;; | A490B0 |        N3933A |           | 2015-04-15 09:44:03.0 | 2015-04-15 09:52:14.0 |              1 |           4400.0 |         285 |
+;;; | A4A691 |        N3990A |           | 2015-06-04 15:53:19.0 | 2015-06-04 18:08:18.0 |              1 |           2100.0 |        1908 |
+;;; | A62B61 |        N497PC |           | 2015-03-04 14:33:07.0 | 2015-07-12 10:34:45.0 |             34 |          12500.0 |       31920 |
+;;; | A6DCEA |        N541PB |           | 2015-03-02 16:47:27.0 | 2015-08-03 09:14:27.0 |             28 |          14300.0 |       38575 |
+;;; | A72AA1 |        N561A  |           | 2015-04-29 11:24:54.0 | 2015-04-29 11:24:54.0 |              1 |              0.0 |           1 |
+;;; | A9C038 |        N7272N |    N7272N | 2015-06-27 08:20:50.0 | 2015-06-27 08:25:01.0 |              1 |           5450.0 |         116 |
+;;; | A9C038 |        N7272N |           | 2015-06-27 08:17:50.0 | 2015-06-27 08:20:49.0 |              1 |           4800.0 |          49 |
+;;; | AA104E |        N748AM |           | 2015-04-16 17:49:07.0 | 2015-04-16 17:57:48.0 |              1 |           5400.0 |         333 |
+;;; | AA3B84 |        N759AM |           | 2015-06-19 11:26:50.0 | 2015-06-19 11:30:36.0 |              1 |           7400.0 |          43 |
+;;; 
+;; <-
+;; =>
+;;; {"type":"html","content":"<span class='clj-nil'>nil</span>","value":"nil"}
+;; <=
+
+;; **
+;;; # Where have they flown?
+;;; 
+;;; Some of the aircraft have briefly reported position information, so I map that.
+;; **
+
+;; @@
+(def pos-reports
+  (group-by
+    :icao
+    (jdbc/query
+      db
+      (str "select * from reports where position is not null and icao in " dhs-icao-sql " order by timestamp asc"))))
+
+(println (count pos-reports) "aircraft have positions:")
+(doseq [icao (keys pos-reports)]
+  (println "  " icao "-" (dhs-aircraft icao) (count (pos-reports icao)) "pings"))
+
+;; Convert timestamps into joda timestamps.
+(def pos-reports
+  (into
+    {}
+    (for [[icao reports] pos-reports]
+      [icao
+       (map
+         (fn [report] (assoc report :timestamp (timecoerce/from-sql-time (:timestamp report))))
+         reports)])))
+
+(def tracks (mapcat (fn [[icao reports]] (log2kml/partition-sessions 300 reports)) pos-reports))
+
+(apply lg/geo :width 800 :height 800 :opacity 1.0 :color "orange"
+       (map (fn [t] [:line t])
+              (map
+                (fn [track]
+                  (map
+                    (fn [report]
+                    [(:lat report) (:lon report)])
+                track))
+            tracks)))
+;; @@
+;; ->
+;;; 2 aircraft have positions:
+;;;    A6DCEA - N541PB 1 pings
+;;;    A9C038 - N7272N 163 pings
+;;; 
+;; <-
+;; =>
+;;; {"type":"html","content":"<div>\n<div id='e15c1f2d-0f49-41d3-b91e-1d4749971970' style='height: 800px; width: 800px;'></div>\n<script type='text/javascript'>\n$(function () {\n  var cachedScript = function(url, options) {\n    // Allow user to set any option except for dataType, cache, and url\n    options = $.extend( options || {}, {\n      dataType: 'script',\n      cache: true,\n      url: url\n    });\n\n    // Use $.ajax() since it is more flexible than $.getScript\n    // Return the jqXHR object so we can chain callbacks\n    return jQuery.ajax(options);\n  };\n  var createMap = function() {\n    var map = L.map('e15c1f2d-0f49-41d3-b91e-1d4749971970')\n    L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png')\n        .addTo(map);\n    var geoJsons = [{\"type\":\"Feature\",\"geometry\":{\"type\":\"LineString\",\"coordinates\":[[-117.93865,34.0497]]}},{\"type\":\"Feature\",\"geometry\":{\"type\":\"LineString\",\"coordinates\":[[-118.36126,34.11996],[-118.3598,34.11983],[-118.3598,34.11983],[-118.34893,34.11836],[-118.34893,34.11836],[-118.34893,34.11836],[-118.3378,34.11688],[-118.3375,34.11681],[-118.3375,34.11681],[-118.32996,34.11567],[-118.3065,34.11218],[-118.3065,34.11218],[-118.30553,34.11208],[-118.30353,34.11182],[-118.30353,34.11182],[-118.30353,34.11182],[-118.29405,34.11058],[-118.29405,34.11058],[-118.29405,34.11058],[-118.29214,34.11036],[-118.28666,34.10994],[-118.28666,34.10994],[-118.28579,34.1099],[-118.28579,34.1099],[-118.28497,34.10989],[-118.28247,34.1099],[-118.28184,34.10989],[-118.28156,34.10985],[-118.28156,34.10985],[-118.27999,34.10985],[-118.27938,34.1098],[-118.27938,34.1098],[-118.27772,34.10976],[-118.27718,34.10976],[-118.27718,34.10976],[-118.27595,34.10971],[-118.27595,34.10971],[-118.27595,34.10971],[-118.27343,34.10962],[-118.27314,34.10962],[-118.27057,34.10952],[-118.27057,34.10952],[-118.26687,34.10948],[-118.26687,34.10948],[-118.26593,34.10948],[-118.26536,34.10948],[-118.26536,34.10948],[-118.26193,34.10962],[-118.2616,34.10962],[-118.2605,34.10971],[-118.25981,34.10971],[-118.25953,34.10976],[-118.25801,34.10985],[-118.25801,34.10985],[-118.2546,34.10999],[-118.2546,34.10999],[-118.25369,34.11008],[-118.2528,34.11012],[-118.24894,34.11041],[-118.24865,34.11044],[-118.24865,34.11044],[-118.23823,34.11131],[-118.23823,34.11131],[-118.23823,34.11131],[-118.23671,34.11145],[-118.23671,34.11145],[-118.23555,34.11157],[-118.23269,34.1118],[-118.22971,34.112],[-118.22943,34.11199],[-118.22943,34.11199],[-118.22794,34.11204],[-118.22794,34.11204],[-118.22646,34.11209],[-118.22646,34.11209],[-118.22451,34.11218],[-118.2236,34.11223],[-118.22296,34.11222],[-118.21973,34.11237],[-118.21884,34.11241],[-118.21884,34.11241],[-118.21424,34.11259],[-118.21328,34.11264],[-118.21243,34.11269],[-118.21243,34.11269],[-118.21152,34.11274],[-118.21095,34.11278],[-118.21037,34.11278],[-118.20981,34.11282],[-118.20885,34.11287],[-118.20854,34.11292],[-118.20829,34.11292],[-118.20797,34.11292],[-118.20797,34.11292],[-118.20622,34.11301],[-118.20568,34.11306],[-118.20505,34.11311],[-118.20476,34.1131],[-118.20419,34.11311],[-118.20364,34.11314],[-118.20288,34.1132],[-118.20196,34.11324],[-118.20127,34.11325],[-118.19882,34.11337],[-118.19882,34.11337],[-118.19882,34.11337],[-118.19418,34.11357],[-118.19378,34.11356],[-118.19316,34.1136],[-118.19254,34.1136],[-118.18949,34.11371],[-118.18949,34.11371],[-118.18949,34.11371],[-118.18711,34.11374],[-118.18617,34.11376],[-118.18587,34.11374],[-118.18502,34.11376],[-118.18502,34.11376],[-118.18414,34.11378],[-118.18414,34.11378],[-118.18414,34.11378],[-118.18414,34.11378],[-118.18193,34.11381],[-118.18111,34.11378],[-118.18079,34.11376],[-118.17993,34.11376],[-118.17993,34.11376],[-118.17831,34.11369],[-118.17831,34.11369],[-118.17831,34.11369],[-118.17831,34.11369],[-118.17124,34.11333],[-118.1706,34.11329],[-118.1706,34.11329],[-118.1706,34.11329],[-118.16334,34.11264],[-118.16305,34.11264],[-118.16194,34.1125],[-118.16194,34.1125],[-118.16139,34.11246],[-118.16139,34.11246],[-118.15919,34.11223],[-118.15919,34.11223],[-118.15919,34.11223],[-118.15919,34.11223],[-118.15321,34.11143],[-118.15258,34.11131],[-118.14875,34.11069],[-118.14817,34.11059],[-118.14787,34.11053],[-118.14697,34.11041],[-118.14417,34.10994],[-118.14243,34.10966],[-118.14243,34.10966],[-118.14243,34.10966],[-118.14243,34.10966],[-118.14243,34.10966],[-118.13765,34.10892],[-118.13765,34.10892],[-118.13765,34.10892],[-118.12814,34.1077],[-118.12757,34.10761],[-118.12757,34.10761]]}}];\n    var bounds = null;\n    for (var i = 0; i < geoJsons.length; i++) {\n      var geoJson = L.geoJson(\n      geoJsons[i],\n      {style: {'color': 'orange',\n               'opacity': 1.0}});\n      geoJson.addTo(map);\n      console.log('Added GeoJSON:');\n      console.log(geoJsons[i]);\n      if (!bounds) {\n        bounds = geoJson.getBounds();\n      } else {\n        bounds.extend(geoJson.getBounds());\n      }\n    }\n    if (null) {\n      map.setView.apply(map, null);\n    } else {\n      console.log('setting bounds to ' + bounds);\n      console.log(bounds);\n      map.fitBounds(bounds);\n    }\n  };\n  if (!document.getElementById('leaflet-css')) {\n    $('<link>')\n      .attr('rel', 'stylesheet')\n      .attr('href', 'http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.css')\n      .attr('id', 'leaflet-css')\n      .appendTo('head');\n  }\n  if (!window.leafletJsLoaded) {\n    if (!window.leafletJsIsLoading) {\n      window.leafletJsLoadedCallbacks = [createMap];\n      window.leafletJsIsLoading = true;\n      cachedScript('http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.js')\n        .done(function() {\n          window.leafletJsIsLoading = false;\n          window.leafletJsLoaded = true;\n          _.each(window.leafletJsLoadedCallbacks, function(cb) { cb(); });\n          window.leafletJsLoadedCallbacks = [];\n        })\n        .fail(function() { console.log('failed'); });\n    } else {\n      window.leafletJsLoadedCallbacks.push(createMap);\n    }\n  } else {\n    createMap();\n  }\n});\n</script>\n</div>","value":"#com.lemondronor.leaflet_gorilla.LeafletView{:geodescs ({:type :line, :desc ([34.0497 -117.93865])} {:type :line, :desc ([34.11996 -118.36126] [34.11983 -118.3598] [34.11983 -118.3598] [34.11836 -118.34893] [34.11836 -118.34893] [34.11836 -118.34893] [34.11688 -118.3378] [34.11681 -118.3375] [34.11681 -118.3375] [34.11567 -118.32996] [34.11218 -118.3065] [34.11218 -118.3065] [34.11208 -118.30553] [34.11182 -118.30353] [34.11182 -118.30353] [34.11182 -118.30353] [34.11058 -118.29405] [34.11058 -118.29405] [34.11058 -118.29405] [34.11036 -118.29214] [34.10994 -118.28666] [34.10994 -118.28666] [34.1099 -118.28579] [34.1099 -118.28579] [34.10989 -118.28497] [34.1099 -118.28247] [34.10989 -118.28184] [34.10985 -118.28156] [34.10985 -118.28156] [34.10985 -118.27999] [34.1098 -118.27938] [34.1098 -118.27938] [34.10976 -118.27772] [34.10976 -118.27718] [34.10976 -118.27718] [34.10971 -118.27595] [34.10971 -118.27595] [34.10971 -118.27595] [34.10962 -118.27343] [34.10962 -118.27314] [34.10952 -118.27057] [34.10952 -118.27057] [34.10948 -118.26687] [34.10948 -118.26687] [34.10948 -118.26593] [34.10948 -118.26536] [34.10948 -118.26536] [34.10962 -118.26193] [34.10962 -118.2616] [34.10971 -118.2605] [34.10971 -118.25981] [34.10976 -118.25953] [34.10985 -118.25801] [34.10985 -118.25801] [34.10999 -118.2546] [34.10999 -118.2546] [34.11008 -118.25369] [34.11012 -118.2528] [34.11041 -118.24894] [34.11044 -118.24865] [34.11044 -118.24865] [34.11131 -118.23823] [34.11131 -118.23823] [34.11131 -118.23823] [34.11145 -118.23671] [34.11145 -118.23671] [34.11157 -118.23555] [34.1118 -118.23269] [34.112 -118.22971] [34.11199 -118.22943] [34.11199 -118.22943] [34.11204 -118.22794] [34.11204 -118.22794] [34.11209 -118.22646] [34.11209 -118.22646] [34.11218 -118.22451] [34.11223 -118.2236] [34.11222 -118.22296] [34.11237 -118.21973] [34.11241 -118.21884] [34.11241 -118.21884] [34.11259 -118.21424] [34.11264 -118.21328] [34.11269 -118.21243] [34.11269 -118.21243] [34.11274 -118.21152] [34.11278 -118.21095] [34.11278 -118.21037] [34.11282 -118.20981] [34.11287 -118.20885] [34.11292 -118.20854] [34.11292 -118.20829] [34.11292 -118.20797] [34.11292 -118.20797] [34.11301 -118.20622] [34.11306 -118.20568] [34.11311 -118.20505] [34.1131 -118.20476] [34.11311 -118.20419] [34.11314 -118.20364] [34.1132 -118.20288] [34.11324 -118.20196] [34.11325 -118.20127] [34.11337 -118.19882] [34.11337 -118.19882] [34.11337 -118.19882] [34.11357 -118.19418] [34.11356 -118.19378] [34.1136 -118.19316] [34.1136 -118.19254] [34.11371 -118.18949] [34.11371 -118.18949] [34.11371 -118.18949] [34.11374 -118.18711] [34.11376 -118.18617] [34.11374 -118.18587] [34.11376 -118.18502] [34.11376 -118.18502] [34.11378 -118.18414] [34.11378 -118.18414] [34.11378 -118.18414] [34.11378 -118.18414] [34.11381 -118.18193] [34.11378 -118.18111] [34.11376 -118.18079] [34.11376 -118.17993] [34.11376 -118.17993] [34.11369 -118.17831] [34.11369 -118.17831] [34.11369 -118.17831] [34.11369 -118.17831] [34.11333 -118.17124] [34.11329 -118.1706] [34.11329 -118.1706] [34.11329 -118.1706] [34.11264 -118.16334] [34.11264 -118.16305] [34.1125 -118.16194] [34.1125 -118.16194] [34.11246 -118.16139] [34.11246 -118.16139] [34.11223 -118.15919] [34.11223 -118.15919] [34.11223 -118.15919] [34.11223 -118.15919] [34.11143 -118.15321] [34.11131 -118.15258] [34.11069 -118.14875] [34.11059 -118.14817] [34.11053 -118.14787] [34.11041 -118.14697] [34.10994 -118.14417] [34.10966 -118.14243] [34.10966 -118.14243] [34.10966 -118.14243] [34.10966 -118.14243] [34.10966 -118.14243] [34.10892 -118.13765] [34.10892 -118.13765] [34.10892 -118.13765] [34.1077 -118.12814] [34.10761 -118.12757] [34.10761 -118.12757])}), :opts {:color \"orange\", :opacity 1.0, :height 800, :width 800}}"}
+;; <=
+
+;; @@
+
+;; @@
