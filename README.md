@@ -35,6 +35,16 @@ then run the following:
 $ pgloader basestation.load
 ```
 
+### Load the FAA aircraft registry
+
+Once you've downloaded a copy of the
+[FAA aircraft registry](registration database), expand the archive and
+copy the `MASTER.txt` file to the current directory. You can then load
+the FAA registry into your postgres database with the following:
+
+```
+$ pgloader faa.load
+```
 
 ### Ingest PlanePlotter logs
 
