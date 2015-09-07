@@ -1,0 +1,363 @@
+;; gorilla-repl.fileformat = 1
+
+;; **
+;;; # Gorilla REPL
+;;; 
+;;; Welcome to gorilla :-)
+;;; 
+;;; Shift + enter evaluates code. Hit ctrl+g twice in quick succession or click the menu icon (upper-right corner) for more commands ...
+;;; 
+;;; It's a good habit to run each worksheet in its own namespace: feel free to use the declaration we've provided below if you'd like.
+;; **
+
+;; @@
+(ns frightened-cavern
+  (:require [clj-time.coerce :as timecoerce]
+            [clj-time.core :as time]
+            [clj-time.format :as timeformat]
+            [clojure.data.json :as json]
+            [clojure.java.jdbc :as jdbc]
+            [clojure.pprint :as pprint]
+            [clojure.string :as string]
+            [com.lemondronor.leaflet-gorilla :as lg]
+            [com.lemondronor.orbital-detector :as orbdet]
+            [com.lemondronor.orbital-detector.airportdata :as airportdata]
+            [com.lemondronor.orbital-detector.basestationdb :as basestationdb]
+            [com.lemondronor.orbital-detector.faa :as faa]
+            [com.lemondronor.orbital-detector.net :as net]
+            [com.lemondronor.orbital-detector.log2kml :as log2kml]
+            [gorilla-plot.core :as plot]
+            [gorilla-repl.html :as ghtml]))
+
+(def db "postgresql://localhost:5432/orbital")
+;; @@
+;; =>
+;;; {"type":"html","content":"<span class='clj-var'>#&#x27;frightened-cavern/db</span>","value":"#'frightened-cavern/db"}
+;; <=
+
+;; @@
+(def planes
+  (sort-by
+    :icao
+    (jdbc/query
+      db
+      "select modes as icao, registration, icaotypecode as type from aircraft where modes in (select distinct(icao) from reports where squawk in ('4414', '4415') or registration like 'JEN%');")))
+
+
+(defn owner-desc [reg]
+  (let [owner (:owner (faa/lookup-registration reg))]
+    (if owner
+      (str (:name owner)
+           "<br>"
+           (:street owner)
+           "<br>"
+           (:city owner) " " (:state owner))
+      "Unknown")))
+
+    
+(as-> planes X
+      (map (fn [p]
+             (let [info (airportdata/aircraft-info (:icao p))
+                   col (fn [a] (str "<td>" a "</td>"))]
+               (str "<tr>"
+                    (col (if-let [photo (:image info)]
+                           (str "<img width=200 src=\"" photo "\">")
+                           "[No photo]"))
+                    (col (:registration p))
+                    (col (:type p))
+                    (col (:icao p))
+                    (col (owner-desc (:registration p))) 
+                    "</tr>")))
+           X)
+      (string/join X)
+      (str "<table>"
+             "<tr><th>Photo</th><th>Registration</th><th>Type</th><th>ICAO</th><th>Owner</th></tr>"
+             X
+             "</table>")
+        (ghtml/html-view X))
+;; @@
+;; =>
+;;; {"type":"html","content":"<table><tr><th>Photo</th><th>Registration</th><th>Type</th><th>ICAO</th><th>Owner</th></tr><tr><td>[No photo]</td><td>N239LF</td><td>C206</td><td>A22AEF</td><td>WORLDWIDE AIRCRAFT LEASING CORP<br>110 W 9TH ST<br>WILMINGTON DELAWARE</td></tr><tr><td>[No photo]</td><td>N301A</td><td>C208</td><td>A32309</td><td>WORLDWIDE AIRCRAFT LEASING CORP<br>110 W 9TH ST<br>WILMINGTON DELAWARE</td></tr><tr><td>[No photo]</td><td>N404KR</td><td>C182</td><td>A4BC6E</td><td>OBR LEASING<br>PO BOX 725<br>BRISTOW VIRGINIA</td></tr><tr><td><img width=200 src=\"http://www.airport-data.com/images/aircraft/thumbnails/000/511/511375.jpg\"></td><td>N496WW</td><td>C206</td><td>A6286B</td><td>NATIONAL AIRCRAFT LEASING CORPORATION<br>4001 KENNETT PIKE # 605<br>GREENVILLE DELAWARE</td></tr><tr><td><img width=200 src=\"http://www.airport-data.com/images/aircraft/thumbnails/000/177/177756.jpg\"></td><td>N515JW</td><td>B407</td><td>A674DF</td><td>AEROGRAPHICS INC<br>10678 AVIATION LN<br>MANASSAS VIRGINIA</td></tr><tr><td>[No photo]</td><td>N657TP</td><td>C182</td><td>A8A872</td><td>PXW SERVICES<br>PO BOX 802<br>BRISTOW VIRGINIA</td></tr><tr><td>[No photo]</td><td>N831EM</td><td>C206</td><td>AB5C81</td><td>NATIONAL AIRCRAFT LEASING CORP<br>4001 KENNETT PIKE STE 134<br>GREENVILLE DELAWARE</td></tr><tr><td><img width=200 src=\"http://www.airport-data.com/images/aircraft/thumbnails/000/452/452559.jpg\"></td><td>N956D</td><td>C208</td><td>AD4B3C</td><td>NATIONAL AIRCRAFT LEASING CORP<br>4001 KENNETT PIKE STE 134<br>GREENVILLE DELAWARE</td></tr></table>","value":"#gorilla_repl.html.HtmlView{:content \"<table><tr><th>Photo</th><th>Registration</th><th>Type</th><th>ICAO</th><th>Owner</th></tr><tr><td>[No photo]</td><td>N239LF</td><td>C206</td><td>A22AEF</td><td>WORLDWIDE AIRCRAFT LEASING CORP<br>110 W 9TH ST<br>WILMINGTON DELAWARE</td></tr><tr><td>[No photo]</td><td>N301A</td><td>C208</td><td>A32309</td><td>WORLDWIDE AIRCRAFT LEASING CORP<br>110 W 9TH ST<br>WILMINGTON DELAWARE</td></tr><tr><td>[No photo]</td><td>N404KR</td><td>C182</td><td>A4BC6E</td><td>OBR LEASING<br>PO BOX 725<br>BRISTOW VIRGINIA</td></tr><tr><td><img width=200 src=\\\"http://www.airport-data.com/images/aircraft/thumbnails/000/511/511375.jpg\\\"></td><td>N496WW</td><td>C206</td><td>A6286B</td><td>NATIONAL AIRCRAFT LEASING CORPORATION<br>4001 KENNETT PIKE # 605<br>GREENVILLE DELAWARE</td></tr><tr><td><img width=200 src=\\\"http://www.airport-data.com/images/aircraft/thumbnails/000/177/177756.jpg\\\"></td><td>N515JW</td><td>B407</td><td>A674DF</td><td>AEROGRAPHICS INC<br>10678 AVIATION LN<br>MANASSAS VIRGINIA</td></tr><tr><td>[No photo]</td><td>N657TP</td><td>C182</td><td>A8A872</td><td>PXW SERVICES<br>PO BOX 802<br>BRISTOW VIRGINIA</td></tr><tr><td>[No photo]</td><td>N831EM</td><td>C206</td><td>AB5C81</td><td>NATIONAL AIRCRAFT LEASING CORP<br>4001 KENNETT PIKE STE 134<br>GREENVILLE DELAWARE</td></tr><tr><td><img width=200 src=\\\"http://www.airport-data.com/images/aircraft/thumbnails/000/452/452559.jpg\\\"></td><td>N956D</td><td>C208</td><td>AD4B3C</td><td>NATIONAL AIRCRAFT LEASING CORP<br>4001 KENNETT PIKE STE 134<br>GREENVILLE DELAWARE</td></tr></table>\"}"}
+;; <=
+
+;; @@
+(pprint/print-table
+  (jdbc/query
+    db
+    (str "select icao, count(*) from reports where icao in ("
+         (string/join "," (map #(str "'" (:icao %) "'") planes))
+         ") group by icao;")))
+;; @@
+;; ->
+;;; 
+;;; | :count |  :icao |
+;;; |--------+--------|
+;;; |  18149 | AD4B3C |
+;;; |    665 | A674DF |
+;;; |    551 | A32309 |
+;;; |   1471 | A8A872 |
+;;; |  24522 | A22AEF |
+;;; |    418 | A6286B |
+;;; |  33483 | A4BC6E |
+;;; |   4663 | AB5C81 |
+;;; 
+;; <-
+;; =>
+;;; {"type":"html","content":"<span class='clj-nil'>nil</span>","value":"nil"}
+;; <=
+
+;; @@
+
+
+(def daily-counts
+  (filter
+    #(pos? (:count %))
+    (jdbc/query
+      db
+      "select timestamp::date as day, count(distinct(extract(hour from timestamp))) from reports where icao in ('A674DF', 'A8A872', 'A22AEF', 'A4BC6E', 'AB5C81', 'AD4B3C') group by day order by day asc;")))
+
+(plot/bar-chart (map :day daily-counts) (map :count daily-counts) :plot-size 800)
+;; @@
+;; =>
+;;; {"type":"vega","content":{"axes":[{"scale":"x","type":"x"},{"scale":"y","type":"y"}],"scales":[{"name":"x","type":"ordinal","range":"width","domain":{"data":"b0b16eeb-af81-4bc8-9364-162de433f79a","field":"data.x"}},{"name":"y","range":"height","nice":true,"domain":{"data":"b0b16eeb-af81-4bc8-9364-162de433f79a","field":"data.y"}}],"marks":[{"type":"rect","from":{"data":"b0b16eeb-af81-4bc8-9364-162de433f79a"},"properties":{"enter":{"y":{"scale":"y","field":"data.y"},"width":{"offset":-1,"scale":"x","band":true},"x":{"scale":"x","field":"data.x"},"y2":{"scale":"y","value":0}},"update":{"fill":{"value":"steelblue"},"opacity":{"value":1}},"hover":{"fill":{"value":"#FF29D2"}}}}],"data":[{"name":"b0b16eeb-af81-4bc8-9364-162de433f79a","values":[{"x":"2015-03-03T08:00:00Z","y":7},{"x":"2015-03-04T08:00:00Z","y":5},{"x":"2015-03-05T08:00:00Z","y":5},{"x":"2015-03-06T08:00:00Z","y":3},{"x":"2015-03-07T08:00:00Z","y":5},{"x":"2015-03-09T07:00:00Z","y":10},{"x":"2015-03-10T07:00:00Z","y":2},{"x":"2015-03-15T07:00:00Z","y":3},{"x":"2015-03-17T07:00:00Z","y":3},{"x":"2015-03-18T07:00:00Z","y":3},{"x":"2015-03-19T07:00:00Z","y":5},{"x":"2015-03-20T07:00:00Z","y":2},{"x":"2015-03-23T07:00:00Z","y":9},{"x":"2015-03-24T07:00:00Z","y":6},{"x":"2015-03-25T07:00:00Z","y":6},{"x":"2015-03-26T07:00:00Z","y":2},{"x":"2015-03-27T07:00:00Z","y":8},{"x":"2015-03-29T07:00:00Z","y":1},{"x":"2015-03-30T07:00:00Z","y":6},{"x":"2015-03-31T07:00:00Z","y":5},{"x":"2015-04-01T07:00:00Z","y":5},{"x":"2015-04-02T07:00:00Z","y":2},{"x":"2015-04-06T07:00:00Z","y":5},{"x":"2015-04-08T07:00:00Z","y":4},{"x":"2015-04-09T07:00:00Z","y":2},{"x":"2015-04-10T07:00:00Z","y":2},{"x":"2015-04-11T07:00:00Z","y":2},{"x":"2015-04-13T07:00:00Z","y":5},{"x":"2015-04-14T07:00:00Z","y":8},{"x":"2015-04-17T07:00:00Z","y":4},{"x":"2015-04-20T07:00:00Z","y":5},{"x":"2015-04-21T07:00:00Z","y":2},{"x":"2015-04-22T07:00:00Z","y":1},{"x":"2015-04-23T07:00:00Z","y":4},{"x":"2015-04-26T07:00:00Z","y":2},{"x":"2015-04-27T07:00:00Z","y":5},{"x":"2015-04-28T07:00:00Z","y":2},{"x":"2015-04-29T07:00:00Z","y":2},{"x":"2015-04-30T07:00:00Z","y":2},{"x":"2015-05-01T07:00:00Z","y":2},{"x":"2015-05-02T07:00:00Z","y":3},{"x":"2015-05-03T07:00:00Z","y":6},{"x":"2015-05-04T07:00:00Z","y":2}]}],"width":800,"height":494.4375915527344,"padding":{"bottom":20,"top":10,"right":10,"left":50}},"value":"#gorilla_repl.vega.VegaView{:content {:axes [{:scale \"x\", :type \"x\"} {:scale \"y\", :type \"y\"}], :scales [{:name \"x\", :type \"ordinal\", :range \"width\", :domain {:data \"b0b16eeb-af81-4bc8-9364-162de433f79a\", :field \"data.x\"}} {:name \"y\", :range \"height\", :nice true, :domain {:data \"b0b16eeb-af81-4bc8-9364-162de433f79a\", :field \"data.y\"}}], :marks [{:type \"rect\", :from {:data \"b0b16eeb-af81-4bc8-9364-162de433f79a\"}, :properties {:enter {:y {:scale \"y\", :field \"data.y\"}, :width {:offset -1, :scale \"x\", :band true}, :x {:scale \"x\", :field \"data.x\"}, :y2 {:scale \"y\", :value 0}}, :update {:fill {:value \"steelblue\"}, :opacity {:value 1}}, :hover {:fill {:value \"#FF29D2\"}}}}], :data [{:name \"b0b16eeb-af81-4bc8-9364-162de433f79a\", :values ({:x #inst \"2015-03-03T08:00:00.000-00:00\", :y 7} {:x #inst \"2015-03-04T08:00:00.000-00:00\", :y 5} {:x #inst \"2015-03-05T08:00:00.000-00:00\", :y 5} {:x #inst \"2015-03-06T08:00:00.000-00:00\", :y 3} {:x #inst \"2015-03-07T08:00:00.000-00:00\", :y 5} {:x #inst \"2015-03-09T07:00:00.000-00:00\", :y 10} {:x #inst \"2015-03-10T07:00:00.000-00:00\", :y 2} {:x #inst \"2015-03-15T07:00:00.000-00:00\", :y 3} {:x #inst \"2015-03-17T07:00:00.000-00:00\", :y 3} {:x #inst \"2015-03-18T07:00:00.000-00:00\", :y 3} {:x #inst \"2015-03-19T07:00:00.000-00:00\", :y 5} {:x #inst \"2015-03-20T07:00:00.000-00:00\", :y 2} {:x #inst \"2015-03-23T07:00:00.000-00:00\", :y 9} {:x #inst \"2015-03-24T07:00:00.000-00:00\", :y 6} {:x #inst \"2015-03-25T07:00:00.000-00:00\", :y 6} {:x #inst \"2015-03-26T07:00:00.000-00:00\", :y 2} {:x #inst \"2015-03-27T07:00:00.000-00:00\", :y 8} {:x #inst \"2015-03-29T07:00:00.000-00:00\", :y 1} {:x #inst \"2015-03-30T07:00:00.000-00:00\", :y 6} {:x #inst \"2015-03-31T07:00:00.000-00:00\", :y 5} {:x #inst \"2015-04-01T07:00:00.000-00:00\", :y 5} {:x #inst \"2015-04-02T07:00:00.000-00:00\", :y 2} {:x #inst \"2015-04-06T07:00:00.000-00:00\", :y 5} {:x #inst \"2015-04-08T07:00:00.000-00:00\", :y 4} {:x #inst \"2015-04-09T07:00:00.000-00:00\", :y 2} {:x #inst \"2015-04-10T07:00:00.000-00:00\", :y 2} {:x #inst \"2015-04-11T07:00:00.000-00:00\", :y 2} {:x #inst \"2015-04-13T07:00:00.000-00:00\", :y 5} {:x #inst \"2015-04-14T07:00:00.000-00:00\", :y 8} {:x #inst \"2015-04-17T07:00:00.000-00:00\", :y 4} {:x #inst \"2015-04-20T07:00:00.000-00:00\", :y 5} {:x #inst \"2015-04-21T07:00:00.000-00:00\", :y 2} {:x #inst \"2015-04-22T07:00:00.000-00:00\", :y 1} {:x #inst \"2015-04-23T07:00:00.000-00:00\", :y 4} {:x #inst \"2015-04-26T07:00:00.000-00:00\", :y 2} {:x #inst \"2015-04-27T07:00:00.000-00:00\", :y 5} {:x #inst \"2015-04-28T07:00:00.000-00:00\", :y 2} {:x #inst \"2015-04-29T07:00:00.000-00:00\", :y 2} {:x #inst \"2015-04-30T07:00:00.000-00:00\", :y 2} {:x #inst \"2015-05-01T07:00:00.000-00:00\", :y 2} {:x #inst \"2015-05-02T07:00:00.000-00:00\", :y 3} {:x #inst \"2015-05-03T07:00:00.000-00:00\", :y 6} {:x #inst \"2015-05-04T07:00:00.000-00:00\", :y 2})}], :width 800, :height 494.4376, :padding {:bottom 20, :top 10, :right 10, :left 50}}}"}
+;; <=
+
+;; @@
+(def reports (jdbc/query db "select * from reports where icao = 'A4BC6E' order by timestamp asc;"))
+(def reports
+  (map
+    (fn [report] (assoc report :timestamp (timecoerce/from-sql-time (:timestamp report))))
+    reports))
+
+(def tracks (log2kml/partition-sessions (* 15 60) reports))
+
+(println (count tracks))
+(doseq [track tracks]
+  (println "=====")
+  (println (:timestamp (first track)) (:timestamp (last track)) (time/in-minutes (time/interval (:timestamp (first track)) (:timestamp (last track)))))
+  (println (count track)))
+
+
+(defn iso8601-str [dt]
+  (timeformat/unparse (timeformat/formatters :basic-date-time) dt))
+
+
+(defn track-to-interval [track]
+  {:start (iso8601-str (:timestamp (first track)))
+   :end (iso8601-str (:timestamp (last track)))})
+
+(pprint/pprint (json/write-str (map track-to-interval tracks)))
+;; @@
+;; ->
+;;; 51
+;;; =====
+;;; #&lt;DateTime 2015-03-03T15:28:27.000Z&gt; #&lt;DateTime 2015-03-03T15:35:47.000Z&gt; 7
+;;; 70
+;;; =====
+;;; #&lt;DateTime 2015-03-03T20:06:56.000Z&gt; #&lt;DateTime 2015-03-03T20:11:11.000Z&gt; 4
+;;; 41
+;;; =====
+;;; #&lt;DateTime 2015-03-03T23:36:02.000Z&gt; #&lt;DateTime 2015-03-03T23:46:12.000Z&gt; 10
+;;; 29
+;;; =====
+;;; #&lt;DateTime 2015-03-04T04:15:57.000Z&gt; #&lt;DateTime 2015-03-04T04:23:30.000Z&gt; 7
+;;; 197
+;;; =====
+;;; #&lt;DateTime 2015-03-04T16:45:50.000Z&gt; #&lt;DateTime 2015-03-04T18:34:31.000Z&gt; 108
+;;; 2043
+;;; =====
+;;; #&lt;DateTime 2015-03-05T14:35:32.000Z&gt; #&lt;DateTime 2015-03-05T14:41:59.000Z&gt; 6
+;;; 13
+;;; =====
+;;; #&lt;DateTime 2015-03-05T19:15:43.000Z&gt; #&lt;DateTime 2015-03-05T19:22:52.000Z&gt; 7
+;;; 21
+;;; =====
+;;; #&lt;DateTime 2015-03-07T21:14:08.000Z&gt; #&lt;DateTime 2015-03-08T01:53:10.000Z&gt; 279
+;;; 1711
+;;; =====
+;;; #&lt;DateTime 2015-03-09T23:58:37.000Z&gt; #&lt;DateTime 2015-03-10T00:11:01.000Z&gt; 12
+;;; 543
+;;; =====
+;;; #&lt;DateTime 2015-03-10T03:46:37.000Z&gt; #&lt;DateTime 2015-03-10T04:00:01.000Z&gt; 13
+;;; 466
+;;; =====
+;;; #&lt;DateTime 2015-03-11T00:14:48.000Z&gt; #&lt;DateTime 2015-03-11T00:27:17.000Z&gt; 12
+;;; 524
+;;; =====
+;;; #&lt;DateTime 2015-03-11T03:02:39.000Z&gt; #&lt;DateTime 2015-03-11T03:16:59.000Z&gt; 14
+;;; 467
+;;; =====
+;;; #&lt;DateTime 2015-03-16T01:02:26.000Z&gt; #&lt;DateTime 2015-03-16T01:07:00.000Z&gt; 4
+;;; 11
+;;; =====
+;;; #&lt;DateTime 2015-03-16T01:54:36.000Z&gt; #&lt;DateTime 2015-03-16T03:02:32.000Z&gt; 67
+;;; 1313
+;;; =====
+;;; #&lt;DateTime 2015-03-18T02:38:30.000Z&gt; #&lt;DateTime 2015-03-18T02:45:23.000Z&gt; 6
+;;; 43
+;;; =====
+;;; #&lt;DateTime 2015-03-18T07:17:48.000Z&gt; #&lt;DateTime 2015-03-18T07:21:24.000Z&gt; 3
+;;; 43
+;;; =====
+;;; #&lt;DateTime 2015-03-19T15:25:15.000Z&gt; #&lt;DateTime 2015-03-19T15:29:13.000Z&gt; 3
+;;; 95
+;;; =====
+;;; #&lt;DateTime 2015-03-19T19:50:39.000Z&gt; #&lt;DateTime 2015-03-19T20:05:29.000Z&gt; 14
+;;; 521
+;;; =====
+;;; #&lt;DateTime 2015-03-19T22:05:53.000Z&gt; #&lt;DateTime 2015-03-19T22:18:00.000Z&gt; 12
+;;; 437
+;;; =====
+;;; #&lt;DateTime 2015-03-20T02:22:52.000Z&gt; #&lt;DateTime 2015-03-20T02:34:31.000Z&gt; 11
+;;; 443
+;;; =====
+;;; #&lt;DateTime 2015-03-23T15:57:47.000Z&gt; #&lt;DateTime 2015-03-23T20:03:43.000Z&gt; 245
+;;; 3598
+;;; =====
+;;; #&lt;DateTime 2015-03-23T22:50:11.000Z&gt; #&lt;DateTime 2015-03-23T22:56:51.000Z&gt; 6
+;;; 55
+;;; =====
+;;; #&lt;DateTime 2015-03-24T03:04:28.000Z&gt; #&lt;DateTime 2015-03-24T03:11:34.000Z&gt; 7
+;;; 137
+;;; =====
+;;; #&lt;DateTime 2015-03-25T23:07:14.000Z&gt; #&lt;DateTime 2015-03-25T23:46:07.000Z&gt; 38
+;;; 499
+;;; =====
+;;; #&lt;DateTime 2015-03-26T00:14:57.000Z&gt; #&lt;DateTime 2015-03-26T00:21:33.000Z&gt; 6
+;;; 71
+;;; =====
+;;; #&lt;DateTime 2015-03-26T15:44:59.000Z&gt; #&lt;DateTime 2015-03-26T15:50:27.000Z&gt; 5
+;;; 55
+;;; =====
+;;; #&lt;DateTime 2015-03-26T20:17:41.000Z&gt; #&lt;DateTime 2015-03-26T20:23:29.000Z&gt; 5
+;;; 94
+;;; =====
+;;; #&lt;DateTime 2015-03-27T16:17:12.000Z&gt; #&lt;DateTime 2015-03-27T19:53:46.000Z&gt; 216
+;;; 658
+;;; =====
+;;; #&lt;DateTime 2015-04-01T15:30:26.000Z&gt; #&lt;DateTime 2015-04-01T15:39:36.000Z&gt; 9
+;;; 60
+;;; =====
+;;; #&lt;DateTime 2015-04-01T20:10:11.000Z&gt; #&lt;DateTime 2015-04-01T20:28:37.000Z&gt; 18
+;;; 600
+;;; =====
+;;; #&lt;DateTime 2015-04-02T17:03:35.000Z&gt; #&lt;DateTime 2015-04-02T17:03:59.000Z&gt; 0
+;;; 4
+;;; =====
+;;; #&lt;DateTime 2015-04-02T21:30:24.000Z&gt; #&lt;DateTime 2015-04-02T21:43:27.000Z&gt; 13
+;;; 487
+;;; =====
+;;; #&lt;DateTime 2015-04-13T17:14:18.000Z&gt; #&lt;DateTime 2015-04-13T21:24:05.000Z&gt; 249
+;;; 3417
+;;; =====
+;;; #&lt;DateTime 2015-04-14T17:10:10.000Z&gt; #&lt;DateTime 2015-04-14T21:00:50.000Z&gt; 230
+;;; 6977
+;;; =====
+;;; #&lt;DateTime 2015-04-20T16:09:40.000Z&gt; #&lt;DateTime 2015-04-20T20:05:29.000Z&gt; 235
+;;; 4353
+;;; =====
+;;; #&lt;DateTime 2015-04-23T13:51:56.000Z&gt; #&lt;DateTime 2015-04-23T13:55:29.000Z&gt; 3
+;;; 48
+;;; =====
+;;; #&lt;DateTime 2015-04-23T14:13:35.000Z&gt; #&lt;DateTime 2015-04-23T14:13:35.000Z&gt; 0
+;;; 1
+;;; =====
+;;; #&lt;DateTime 2015-04-23T17:00:24.000Z&gt; #&lt;DateTime 2015-04-23T17:05:42.000Z&gt; 5
+;;; 94
+;;; =====
+;;; #&lt;DateTime 2015-04-27T14:41:31.000Z&gt; #&lt;DateTime 2015-04-27T14:43:02.000Z&gt; 1
+;;; 19
+;;; =====
+;;; #&lt;DateTime 2015-04-27T19:14:42.000Z&gt; #&lt;DateTime 2015-04-27T19:20:15.000Z&gt; 5
+;;; 6
+;;; =====
+;;; #&lt;DateTime 2015-04-29T16:20:59.000Z&gt; #&lt;DateTime 2015-04-29T16:30:43.000Z&gt; 9
+;;; 341
+;;; =====
+;;; #&lt;DateTime 2015-04-29T21:11:52.000Z&gt; #&lt;DateTime 2015-04-29T21:23:19.000Z&gt; 11
+;;; 380
+;;; =====
+;;; #&lt;DateTime 2015-04-30T22:27:03.000Z&gt; #&lt;DateTime 2015-04-30T22:34:39.000Z&gt; 7
+;;; 37
+;;; =====
+;;; #&lt;DateTime 2015-05-02T22:29:38.000Z&gt; #&lt;DateTime 2015-05-02T22:31:42.000Z&gt; 2
+;;; 9
+;;; =====
+;;; #&lt;DateTime 2015-05-03T01:51:50.000Z&gt; #&lt;DateTime 2015-05-03T02:06:05.000Z&gt; 14
+;;; 590
+;;; =====
+;;; #&lt;DateTime 2015-05-03T18:03:01.000Z&gt; #&lt;DateTime 2015-05-03T18:13:18.000Z&gt; 10
+;;; 442
+;;; =====
+;;; #&lt;DateTime 2015-05-03T22:03:41.000Z&gt; #&lt;DateTime 2015-05-03T22:17:27.000Z&gt; 13
+;;; 448
+;;; =====
+;;; #&lt;DateTime 2015-05-04T00:41:07.000Z&gt; #&lt;DateTime 2015-05-04T00:50:46.000Z&gt; 9
+;;; 372
+;;; =====
+;;; #&lt;DateTime 2015-05-04T04:22:00.000Z&gt; #&lt;DateTime 2015-05-04T04:36:19.000Z&gt; 14
+;;; 575
+;;; =====
+;;; #&lt;DateTime 2015-05-05T00:53:31.000Z&gt; #&lt;DateTime 2015-05-05T00:53:45.000Z&gt; 0
+;;; 4
+;;; =====
+;;; #&lt;DateTime 2015-05-05T05:18:53.000Z&gt; #&lt;DateTime 2015-05-05T05:25:30.000Z&gt; 6
+;;; 21
+;;; &quot;[{\&quot;start\&quot;:\&quot;20150303T152827.000Z\&quot;,\&quot;end\&quot;:\&quot;20150303T153547.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150303T200656.000Z\&quot;,\&quot;end\&quot;:\&quot;20150303T201111.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150303T233602.000Z\&quot;,\&quot;end\&quot;:\&quot;20150303T234612.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150304T041557.000Z\&quot;,\&quot;end\&quot;:\&quot;20150304T042330.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150304T164550.000Z\&quot;,\&quot;end\&quot;:\&quot;20150304T183431.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150305T143532.000Z\&quot;,\&quot;end\&quot;:\&quot;20150305T144159.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150305T191543.000Z\&quot;,\&quot;end\&quot;:\&quot;20150305T192252.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150307T211408.000Z\&quot;,\&quot;end\&quot;:\&quot;20150308T015310.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150309T235837.000Z\&quot;,\&quot;end\&quot;:\&quot;20150310T001101.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150310T034637.000Z\&quot;,\&quot;end\&quot;:\&quot;20150310T040001.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150311T001448.000Z\&quot;,\&quot;end\&quot;:\&quot;20150311T002717.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150311T030239.000Z\&quot;,\&quot;end\&quot;:\&quot;20150311T031659.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150316T010226.000Z\&quot;,\&quot;end\&quot;:\&quot;20150316T010700.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150316T015436.000Z\&quot;,\&quot;end\&quot;:\&quot;20150316T030232.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150318T023830.000Z\&quot;,\&quot;end\&quot;:\&quot;20150318T024523.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150318T071748.000Z\&quot;,\&quot;end\&quot;:\&quot;20150318T072124.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150319T152515.000Z\&quot;,\&quot;end\&quot;:\&quot;20150319T152913.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150319T195039.000Z\&quot;,\&quot;end\&quot;:\&quot;20150319T200529.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150319T220553.000Z\&quot;,\&quot;end\&quot;:\&quot;20150319T221800.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150320T022252.000Z\&quot;,\&quot;end\&quot;:\&quot;20150320T023431.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150323T155747.000Z\&quot;,\&quot;end\&quot;:\&quot;20150323T200343.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150323T225011.000Z\&quot;,\&quot;end\&quot;:\&quot;20150323T225651.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150324T030428.000Z\&quot;,\&quot;end\&quot;:\&quot;20150324T031134.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150325T230714.000Z\&quot;,\&quot;end\&quot;:\&quot;20150325T234607.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150326T001457.000Z\&quot;,\&quot;end\&quot;:\&quot;20150326T002133.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150326T154459.000Z\&quot;,\&quot;end\&quot;:\&quot;20150326T155027.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150326T201741.000Z\&quot;,\&quot;end\&quot;:\&quot;20150326T202329.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150327T161712.000Z\&quot;,\&quot;end\&quot;:\&quot;20150327T195346.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150401T153026.000Z\&quot;,\&quot;end\&quot;:\&quot;20150401T153936.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150401T201011.000Z\&quot;,\&quot;end\&quot;:\&quot;20150401T202837.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150402T170335.000Z\&quot;,\&quot;end\&quot;:\&quot;20150402T170359.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150402T213024.000Z\&quot;,\&quot;end\&quot;:\&quot;20150402T214327.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150413T171418.000Z\&quot;,\&quot;end\&quot;:\&quot;20150413T212405.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150414T171010.000Z\&quot;,\&quot;end\&quot;:\&quot;20150414T210050.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150420T160940.000Z\&quot;,\&quot;end\&quot;:\&quot;20150420T200529.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150423T135156.000Z\&quot;,\&quot;end\&quot;:\&quot;20150423T135529.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150423T141335.000Z\&quot;,\&quot;end\&quot;:\&quot;20150423T141335.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150423T170024.000Z\&quot;,\&quot;end\&quot;:\&quot;20150423T170542.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150427T144131.000Z\&quot;,\&quot;end\&quot;:\&quot;20150427T144302.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150427T191442.000Z\&quot;,\&quot;end\&quot;:\&quot;20150427T192015.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150429T162059.000Z\&quot;,\&quot;end\&quot;:\&quot;20150429T163043.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150429T211152.000Z\&quot;,\&quot;end\&quot;:\&quot;20150429T212319.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150430T222703.000Z\&quot;,\&quot;end\&quot;:\&quot;20150430T223439.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150502T222938.000Z\&quot;,\&quot;end\&quot;:\&quot;20150502T223142.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150503T015150.000Z\&quot;,\&quot;end\&quot;:\&quot;20150503T020605.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150503T180301.000Z\&quot;,\&quot;end\&quot;:\&quot;20150503T181318.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150503T220341.000Z\&quot;,\&quot;end\&quot;:\&quot;20150503T221727.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150504T004107.000Z\&quot;,\&quot;end\&quot;:\&quot;20150504T005046.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150504T042200.000Z\&quot;,\&quot;end\&quot;:\&quot;20150504T043619.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150505T005331.000Z\&quot;,\&quot;end\&quot;:\&quot;20150505T005345.000Z\&quot;},{\&quot;start\&quot;:\&quot;20150505T051853.000Z\&quot;,\&quot;end\&quot;:\&quot;20150505T052530.000Z\&quot;}]&quot;
+;;; 
+;; <-
+;; =>
+;;; {"type":"html","content":"<span class='clj-nil'>nil</span>","value":"nil"}
+;; <=
+
+;; @@
+(def reports (jdbc/query db "select * from reports where icao in ('A4BC6E', 'A22AEF', 'AD4B3C') order by timestamp asc;"))
+(def reports (map (fn [report] (assoc report :timestamp (timecoerce/from-sql-time (:timestamp report)))) reports))
+(def reports-by-icao (group-by :icao reports))
+(doseq [[icao reports] reports-by-icao]
+  (println icao (count reports)))
+;; @@
+;; ->
+;;; A4BC6E 33483
+;;; AD4B3C 18149
+;;; A22AEF 24522
+;;; 
+;; <-
+;; =>
+;;; {"type":"html","content":"<span class='clj-nil'>nil</span>","value":"nil"}
+;; <=
+
+;; @@
+(defn report-to-json [r] {:altitude (:altitude r) :timestamp (iso8601-str (:timestamp r))})
+(report-to-json (first reports))
+;; @@
+;; =>
+;;; {"type":"list-like","open":"<span class='clj-map'>{</span>","close":"<span class='clj-map'>}</span>","separator":", ","items":[{"type":"list-like","open":"","close":"","separator":" ","items":[{"type":"html","content":"<span class='clj-keyword'>:altitude</span>","value":":altitude"},{"type":"html","content":"<span class='clj-unkown'>0</span>","value":"0"}],"value":"[:altitude 0]"},{"type":"list-like","open":"","close":"","separator":" ","items":[{"type":"html","content":"<span class='clj-keyword'>:timestamp</span>","value":":timestamp"},{"type":"html","content":"<span class='clj-string'>&quot;20150303T152827.000Z&quot;</span>","value":"\"20150303T152827.000Z\""}],"value":"[:timestamp \"20150303T152827.000Z\"]"}],"value":"{:altitude 0, :timestamp \"20150303T152827.000Z\"}"}
+;; <=
+
+;; @@
+(def json-reports (into {}
+                        (for [[icao reports] reports-by-icao]
+                          [icao {:pings (map report-to-json reports)}])))
+(println (count json-reports))
+(println (keys json-reports))
+(println (count (json-reports "A4BC63")))
+(binding [*print-length* 10]
+  (println json-reports))
+(spit "pings.json" (json/write-str json-reports))
+;; @@
+;; ->
+;;; 3
+;;; (A4BC6E AD4B3C A22AEF)
+;;; 0
+;;; {A4BC6E {:pings ({:altitude 0, :timestamp 20150303T152827.000Z} {:altitude 5475, :timestamp 20150303T152828.000Z} {:altitude 5475, :timestamp 20150303T152829.000Z} {:altitude 5475, :timestamp 20150303T152854.000Z} {:altitude 5475, :timestamp 20150303T152855.000Z} {:altitude 5475, :timestamp 20150303T152937.000Z} {:altitude 5475, :timestamp 20150303T152939.000Z} {:altitude 5475, :timestamp 20150303T152940.000Z} {:altitude 5475, :timestamp 20150303T152941.000Z} {:altitude 5475, :timestamp 20150303T152952.000Z} ...)}, AD4B3C {:pings ({:altitude 0, :timestamp 20150303T174735.000Z} {:altitude 7500, :timestamp 20150303T174737.000Z} {:altitude 7500, :timestamp 20150303T174738.000Z} {:altitude 7500, :timestamp 20150303T174739.000Z} {:altitude 7500, :timestamp 20150303T174740.000Z} {:altitude 7500, :timestamp 20150303T174741.000Z} {:altitude 7500, :timestamp 20150303T174742.000Z} {:altitude 7500, :timestamp 20150303T174743.000Z} {:altitude 7500, :timestamp 20150303T174744.000Z} {:altitude 7500, :timestamp 20150303T174745.000Z} ...)}, A22AEF {:pings ({:altitude 0, :timestamp 20150317T165034.000Z} {:altitude 5400, :timestamp 20150317T165035.000Z} {:altitude 6600, :timestamp 20150317T213349.000Z} {:altitude 5700, :timestamp 20150317T213401.000Z} {:altitude 5700, :timestamp 20150317T213416.000Z} {:altitude 5500, :timestamp 20150317T213417.000Z} {:altitude 5500, :timestamp 20150317T213422.000Z} {:altitude 5500, :timestamp 20150317T213423.000Z} {:altitude 5400, :timestamp 20150317T213439.000Z} {:altitude 5400, :timestamp 20150317T213440.000Z} ...)}}
+;;; 
+;; <-
+;; =>
+;;; {"type":"html","content":"<span class='clj-nil'>nil</span>","value":"nil"}
+;; <=
+
+;; @@
+
+
+;; @@

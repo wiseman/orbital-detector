@@ -1,0 +1,179 @@
+;; gorilla-repl.fileformat = 1
+
+;; **
+;;; # JANET flights
+;; **
+
+;; @@
+(ns mellow-peak.janet
+  (:require
+    [clj-time.coerce :as timecoerce]
+    [clojure.java.jdbc :as jdbc]
+    [clojure.java.io :as io]
+    [clojure.pprint :as pprint]
+    [clojure.string :as string]
+    [com.lemondronor.orbital-detector.log2kml :as log2kml]
+    [com.lemondronor.leaflet-gorilla :as lg]
+    [gorilla-plot.core :as plot]))
+;; @@
+;; =>
+;;; {"type":"html","content":"<span class='clj-nil'>nil</span>","value":"nil"}
+;; <=
+
+;; @@
+(def db "postgresql://localhost:5432/orbital")
+
+;; List from http://www.dreamlandresort.com/info/janet_numbers.html
+(def janet-regs ["N288DP", "N365SR", "N273RH", "N859WP", "N869HH", "N319BD", "N4529W", "N5175U", "N5176Y", "N5177C", "N5294E", "N5294M", "N20RA", "N27RA", "N623RA", "N654BA", "N661BA", "N662BA", "N6583C"])
+
+(def janet-aircraft
+  (let [recs (jdbc/query
+               db
+               (str
+                 "select n_number, mode_s_code_hex from faa_registration where n_number in "
+                 (str "(" (string/join "," (map #(str "'" % "'") janet-regs)) ") ")))]
+    (into {} (for [r recs] [(:mode_s_code_hex r) (:n_number r)]))))
+
+(def janet-icao-sql (str "(" (string/join "," (map #(str "'" % "'") (keys janet-aircraft))) ") "))
+;; @@
+;; =>
+;;; {"type":"html","content":"<span class='clj-var'>#&#x27;mellow-peak.janet/janet-icao-sql</span>","value":"#'mellow-peak.janet/janet-icao-sql"}
+;; <=
+
+;; @@
+(pprint/print-table
+  [:icao :registration :callsign :first_seen :last_seen :num_days_seen :median_altitude :ping_count]
+  (map
+    #(assoc % :registration (janet-aircraft (:icao %)))
+    (jdbc/query
+      db
+      (str "select icao, min(timestamp) as first_seen, max(timestamp) as last_seen, "
+           "count(distinct date_trunc('day', timestamp)) as num_days_seen, percentile_cont(0.5) within group (order by altitude) as median_altitude, "
+           "count(*) as ping_count from reports where icao in "
+           janet-icao-sql
+           "group by icao"))))
+;; @@
+;; ->
+;;; 
+;;; |  :icao | :registration | :callsign |           :first_seen |            :last_seen | :num_days_seen | :median_altitude | :ping_count |
+;;; |--------+---------------+-----------+-----------------------+-----------------------+----------------+------------------+-------------|
+;;; | ABCAC9 |        N859WP |           | 2015-04-28 17:02:01.0 | 2015-04-28 17:02:05.0 |              1 |           6925.0 |           2 |
+;;; | ABF0FD |        N869HH |           | 2015-04-23 03:38:16.0 | 2015-04-23 03:38:53.0 |              1 |           5175.0 |           7 |
+;;; 
+;; <-
+;; =>
+;;; {"type":"html","content":"<span class='clj-nil'>nil</span>","value":"nil"}
+;; <=
+
+;; **
+;;; # Callsigns
+;;; 
+;;; The aircraft do not use any distinctive callsigns.
+;; **
+
+;; @@
+(pprint/print-table
+  [:callsign :count]
+  (jdbc/query
+    db
+    (str "select registration as callsign, count(*) from reports "
+         "where icao in " janet-icao-sql " group by callsign")))
+;; @@
+;; ->
+;;; 
+;;; | :callsign | :count |
+;;; |-----------+--------|
+;;; |           |      9 |
+;;; 
+;; <-
+;; =>
+;;; {"type":"html","content":"<span class='clj-nil'>nil</span>","value":"nil"}
+;; <=
+
+;; **
+;;; # Transponder squawks
+;;; 
+;;; Checking to see what transponder codes they use.
+;; **
+
+;; @@
+(def janet-squawk-counts
+  (jdbc/query
+    db
+    (str "select squawk, count(*) from reports "
+         "where icao in " janet-icao-sql " group by squawk "
+         "order by count desc")))
+  
+(pprint/print-table [:squawk :count] janet-squawk-counts)
+
+;; @@
+;; ->
+;;; 
+;;; | :squawk | :count |
+;;; |---------+--------|
+;;; |    0000 |      9 |
+;;; 
+;; <-
+;; =>
+;;; {"type":"html","content":"<span class='clj-nil'>nil</span>","value":"nil"}
+;; <=
+
+;; **
+;;; # Where have they flown?
+;;; 
+;;; Two of the aircraft have briefly reported position information, so I map that.
+;;; 
+;;; N2727N is the red line, and N541PB, which has only one ping with position information, is the marker icon. 
+;; **
+
+;; @@
+(def pos-reports
+  (group-by
+    :icao
+    (jdbc/query
+      db
+      (str "select * from reports where position is not null and icao in " janet-icao-sql " order by timestamp asc"))))
+
+(println (count pos-reports) "aircraft have positions:")
+(doseq [icao (keys pos-reports)]
+  (println "  " icao "-" (janet-aircraft icao) (count (pos-reports icao)) "pings"))
+
+;; Convert timestamps into joda timestamps.
+(def pos-reports
+  (into
+    {}
+    (for [[icao reports] pos-reports]
+      [icao
+       (map
+         (fn [report] (assoc report :timestamp (timecoerce/from-sql-time (:timestamp report))))
+         reports)])))
+
+(def tracks (mapcat (fn [[icao reports]] (log2kml/partition-sessions 300 reports)) pos-reports))
+
+(apply lg/geo :width 800 :height 800 :opacity 1.0 :color "red"
+       (map
+         (fn [t]
+           (if (> (count t) 1)
+             [:line t]
+             [:points t]))
+         (map
+           (fn [track]
+             (map
+               (fn [report]
+                 [(:lat report) (:lon report)])
+                track))
+           tracks)))
+;; @@
+;; ->
+;;; 2 aircraft have positions:
+;;;    ABF0FD - N869HH 6 pings
+;;;    ABCAC9 - N859WP 1 pings
+;;; 
+;; <-
+;; =>
+;;; {"type":"html","content":"<div>\n<div id='107c721a-336e-43a4-b442-930089e0722f' style='height: 800px; width: 800px;'></div>\n<script type='text/javascript'>\n$(function () {\n  var cachedScript = function(url, options) {\n    // Allow user to set any option except for dataType, cache, and url\n    options = $.extend( options || {}, {\n      dataType: 'script',\n      cache: true,\n      url: url\n    });\n\n    // Use $.ajax() since it is more flexible than $.getScript\n    // Return the jqXHR object so we can chain callbacks\n    return jQuery.ajax(options);\n  };\n  var createMap = function() {\n    var map = L.map('107c721a-336e-43a4-b442-930089e0722f')\n    L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png')\n        .addTo(map);\n    var geoJsons = [{\"type\":\"Feature\",\"geometry\":{\"type\":\"LineString\",\"coordinates\":[[-115.24571,36.0737],[-115.25236,36.07379],[-115.25237,36.07379],[-115.25237,36.07379],[-115.28017,36.07489],[-115.28018,36.07487]]}},{\"type\":\"Feature\",\"geometry\":{\"type\":\"MultiPoint\",\"coordinates\":[[-115.27645,36.11453]]}}];\n    var bounds = null;\n    for (var i = 0; i < geoJsons.length; i++) {\n      var geoJson = L.geoJson(\n      geoJsons[i],\n      {style: {'color': 'red',\n               'opacity': 1.0}});\n      geoJson.addTo(map);\n      console.log('Added GeoJSON:');\n      console.log(geoJsons[i]);\n      if (!bounds) {\n        bounds = geoJson.getBounds();\n      } else {\n        bounds.extend(geoJson.getBounds());\n      }\n    }\n    if (null) {\n      map.setView.apply(map, null);\n    } else {\n      console.log('setting bounds to ' + bounds);\n      console.log(bounds);\n      map.fitBounds(bounds);\n    }\n  };\n  if (!document.getElementById('leaflet-css')) {\n    $('<link>')\n      .attr('rel', 'stylesheet')\n      .attr('href', 'http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.css')\n      .attr('id', 'leaflet-css')\n      .appendTo('head');\n  }\n  if (!window.leafletJsLoaded) {\n    if (!window.leafletJsIsLoading) {\n      window.leafletJsLoadedCallbacks = [createMap];\n      window.leafletJsIsLoading = true;\n      cachedScript('http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.js')\n        .done(function() {\n          window.leafletJsIsLoading = false;\n          window.leafletJsLoaded = true;\n          _.each(window.leafletJsLoadedCallbacks, function(cb) { cb(); });\n          window.leafletJsLoadedCallbacks = [];\n        })\n        .fail(function() { console.log('failed'); });\n    } else {\n      window.leafletJsLoadedCallbacks.push(createMap);\n    }\n  } else {\n    createMap();\n  }\n});\n</script>\n</div>","value":"#com.lemondronor.leaflet_gorilla.LeafletView{:geodescs ({:type :line, :desc ([36.0737 -115.24571] [36.07379 -115.25236] [36.07379 -115.25237] [36.07379 -115.25237] [36.07489 -115.28017] [36.07487 -115.28018])} {:type :points, :desc ([36.11453 -115.27645])}), :opts {:color \"red\", :opacity 1.0, :height 800, :width 800}}"}
+;; <=
+
+;; @@
+
+;; @@
