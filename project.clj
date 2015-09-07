@@ -4,8 +4,9 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[clj-time "0.9.0"]
-                 [com.lemondronor.leaflet-gorilla "0.1.2"]
+                 [com.lemondronor.leaflet-gorilla "0.1.3"]
                  [com.lemonodor/gflags "0.7.2"]
+                 [enlive "1.1.5"]
                  [factual/geo "1.0.0"]
                  [org.clojure/clojure "1.6.0"]
                  [org.clojure/data.csv "0.1.2"]
@@ -20,4 +21,4 @@
   :main ^:skip-aot com.lemondronor.orbital-detector
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}}
-  :jvm-opts ["-server" "-Xmx2G"])
+  :jvm-opts ["-server" "-Xmx1G"])
