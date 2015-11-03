@@ -6,6 +6,15 @@
 
 CREATE EXTENSION IF NOT EXISTS postgis;
 
+CREATE TABLE IF NOT EXISTS provenances(
+       code INTEGER primary key,
+       description VARCHAR(20)
+);
+
+INSERT INTO provenances VALUES
+       (1, 'planeplotter logs'),
+       (2, 'mlat');
+
 CREATE TABLE IF NOT EXISTS reports (
        "timestamp" timestamp with time zone NOT NULL,
        icao VARCHAR(6) NOT NULL,
@@ -16,7 +25,8 @@ CREATE TABLE IF NOT EXISTS reports (
        "position" geometry(Point,4326),
        speed REAL,
        heading REAL,
-       squawk VARCHAR(4)
+       squawk VARCHAR(4),
+       provenance INTEGER
 );
 
 CREATE INDEX reports_icao_index on reports (icao);
