@@ -15,7 +15,8 @@
 
 (gflags/define-integer "time-window-secs"
   1
-  "Only 1 ping will be recorded for each aircraft during each interval of this long.")
+  (str "Only 1 ping will be recorded for each aircraft during each interval of"
+       " the specified length."))
 
 (gflags/define-boolean "with-position-only"
   false
@@ -40,7 +41,7 @@
             (zero? (:lon r)))))
 
 
-(defn log-record-to-db-record [r]
+(defn log-record-to-db-record [r provenance]
   (let [db-rec
         {:timestamp (sql-str (timefmt/unparse db-timestamp-formatter (:timestamp r)))
          :icao (sql-str (:icao r))
@@ -48,7 +49,8 @@
          :altitude (:altitude r)
          :speed (:speed r)
          :heading (:heading r)
-         :squawk (sql-str (:squawk r))}]
+         :squawk (sql-str (:squawk r))
+         :provenance (if (= :provenance :mlat) 2 1)}]
     (if (has-position? r)
       (assoc db-rec
              :lat (:lat r)
@@ -119,7 +121,7 @@
                      (update-in num-skipped [:rate-too-high] inc))
               :else
               (do
-                (insert! t-con :reports (log-record-to-db-record r))
+                (insert! t-con :reports (log-record-to-db-record r :basestation))
                 (recur rstrecords
                        (assoc previous-ping-time icao ping-ts)
                        (inc num-inserted)
