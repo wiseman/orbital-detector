@@ -6,6 +6,19 @@
 
 CREATE EXTENSION IF NOT EXISTS postgis;
 
+CREATE TABLE IF NOT EXISTS pings(
+       "timestamp" timestamp with time zone NOT NULL,
+       icao VARCHAR(6) NOT NULL,
+       is_mlat BOOLEAN,
+       data BYTEA NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS sessions(
+       id INTEGER PRIMARY KEY,
+       start timestamp with time zone NOT NULL,
+       "end" timestamp with time zone NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS provenances(
        code INTEGER primary key,
        description VARCHAR(20)
@@ -26,7 +39,8 @@ CREATE TABLE IF NOT EXISTS reports (
        speed REAL,
        heading REAL,
        squawk VARCHAR(4),
-       provenance INTEGER
+       provenance INTEGER,
+       session_id integer REFERENCES sessions (id),
 );
 
 CREATE INDEX reports_icao_index on reports (icao);
