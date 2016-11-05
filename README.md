@@ -22,7 +22,7 @@ This code assumes you have postgres and postgis installed.
 
 ```
 $ createdb orbital
-$ cat orbital.sql | psql orbital
+$ cat create-tables.sql | psql orbital
 ```
 
 
