@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js" charset="utf-8"></script>
+    <script src="pings2.json"></script>
+    <script>
+function tabulate(data, columns) {
+    var table = d3.select("body").append("table"),
+        thead = table.append("thead"),
+        tbody = table.append("tbody");
+
+    // append the header row
+    thead.append("tr")
+        .selectAll("th")
+        .data(columns)
+        .enter()
+        .append("th")
+            .text(function(column) { return column; });
+
+    // create a row for each object in the data
+    var rows = tbody.selectAll("tr")
+        .data(data)
+        .enter()
+        .append("tr");
+
+    // create a cell in each row for each column
+    var cells = rows.selectAll("td")
+        .data(function(row) {
+            return columns.map(function(column) {
+                return {column: column, value: row[column]};
+            });
+        })
+        .enter()
+        .append("td")
+        .attr("style", "font-family: Courier")
+            .html(function(d) { return d.value; });
+
+    return table;
+}
+
+function uniq(a) {
+  return a.sort().filter(function(item, pos, ary) {
+    return !pos || item != ary[pos - 1];
+  });
+}
+
+
+var startDate = new Date(2015, 2, 1);
+var endDate = new Date(2015, 4, 6);
+var format = d3.time.format('%Y%m%dT%H%M%S.%LZ');
+
+function hourIndex(dt) {
+  var hi = Math.floor((dt.getTime() - startDate.getTime()) / (1000 * 3600));
+  if (hi < 0) {
+    console.log(dt);
+  }
+  return hi;
+}
+
+/* Parse timestamps */
+for (var icao in pings) {
+  pings[icao].pings = pings[icao].pings.map(function(ping) {
+    ping.timestamp = format.parse(ping.timestamp);
+    ping.hourIndex = hourIndex(ping.timestamp);
+    return ping;
+  });
+}
+
+function plotHours(data, options) {
+  options = options || {};
+  var width = options.width || 200;
+  var height = options.height || 10000;
+  var barWidth = options.barWidth || 200;
+  var index = options.index || 0;
+  console.log(data.length + " hours");
+  console.log(index);
+  console.log(data);
+  var x = d3.scale.linear()
+      .domain([0, hourIndex(endDate) + 1])
+      .range([0, height]);
+
+  var chart = d3.select(".chart")
+      .attr("width", 800)
+      .attr("height", height);
+
+  var t = "translate(" + barWidth * index + "," + x(data[0]) + ")";
+console.log(t);
+  var bar = chart.selectAll(".idx" + index)
+      .data(data)
+      .enter().append("g")
+      .attr("transform", function(d, i) { return "translate(" + barWidth * index + "," + x(d) + ")"; });
+
+  bar.append("rect")
+    .attr("width", barWidth)
+    .attr("height", x(1));
+}
+
+
+function pingsToHourIndices(pings) {
+  var hourIndices = uniq(pings.map(function(d) { return d.hourIndex; }));
+  hourIndices.sort(function(a, b) { return a - b; });
+  return hourIndices;
+}
+
+function plotPings(pings, options) {
+  var hourIndices = pingsToHourIndices(pings);
+  plotHours(hourIndices, options);
+}
+    </script>
+
+    <title>Suspected FBI surveillance aircraft flight timelines, Los Angeles</title>
+  </head>
+  <body>
+    <h1>Suspected FBI surveillance aircraft flight timelines, Los Angeles</h1>
+    <script>
+      var aircraftInfos = [];
+      for (var icao in pings) {
+        aircraftInfos.push(pings[icao]);
+      }
+      tabulate(aircraftInfos, ["registration", "owner"]);
+    </script>
+    <svg class="chart"></svg>
+  <script>
+      var days = [];
+      for (var i = 0; i < hourIndex(endDate) + 1; i += 24) {
+        days.push(i);
+      }
+
+      plotHours(days, {index: 0});
+plotPings(pings["A22AEF"].pings, {index: 1});
+plotPings(pings["A4BC6E"].pings, {index: 2});
+plotPings(pings["AD4B3C"].pings, {index: 3});
+    </script>
+  </body>
+</html>

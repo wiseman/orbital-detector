@@ -1,0 +1,17 @@
+digraph {
+    rtlsdr[label="Direct observation via RTL-SDR"];
+    a[label="N239LF\nN301A\nN404KR\nN496WW\nN515JW\nN657TP\nN831EM\nN956D", shape=box];
+    b[label="N831EM", shape=box]
+    rtlsdr -> a[label="Squawked 4414 or 4415"];
+    rtlsdr -> b[label="Used JENNA callsign"];
+    co1[label="AEROGRAPHICS INC\nNATIONAL AIRCRAFT LEASING CORP\nOBR LEASING\nPXW SERVICES\nWORLDWIDE AIRCRAFT LEASING CORP", shape=box];
+    a -> co1[label="Registered to"];
+    b -> co1[label="Registered to"];
+    aero1[label="N142LJ\nN143GS\nN168GP\nN182EM\nN208EB\nN232DW\nN236KS\nN239LF\nN245RB\nN248CF\nN249DB\nN251SR\nN267RH\nN288JY\nN301A\nN318SJ\nN324EB\nN324SJ\nN370JH\nN385RB\nN495BJ\nN495WW\nN510KS\nN520EP\nN536GR\nN557PG\nN55RF\nN608SH\nN610AG\nN622FH\nN632MR\nN632TK\nN64057\nN657TP\nN712MS\nN728MP\nN8210G\nN8211P\nN859JA\nN907WK\nN912EX\nN922MK\nN949RL\nN9546T\nN962JB\nN962PB\nN969PL\nN971N\nN972SM\nN986W", shape=box];
+    co1 -> aero1[label="Also registered"];
+    doj[label="US DEPT OF JUSTICE", shape=box];
+    morecomp[label="FXV RESEARCH\nKLV AVIATION\nKQM AVIATION\nLCB LEASING\nNBR AVIATION\nNBY PRODUCTIONS\nNORTHWEST AIRCRAFT LEASING CORP\nOTV LEASING\nPSL SURVEYS\nRKT PRODUCTIONS", shape=box];
+    co1 -> morecomp[label="Has similar name and address"];
+    doj -> morecomp[label="Has similar address"];
+    doj -> co1[label="Has similar address"];
+}
