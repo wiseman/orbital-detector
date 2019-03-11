@@ -9,9 +9,58 @@ CREATE EXTENSION IF NOT EXISTS postgis;
 CREATE TABLE IF NOT EXISTS pings(
        "timestamp" timestamp with time zone NOT NULL,
        icao VARCHAR(6) NOT NULL,
-       is_mlat BOOLEAN,
-       data BYTEA NOT NULL
+       is_mlat BOOLEAN NOT NULL,
+       signal_level SMALLINT,
+       "type" SMALLINT,
+       downlink_format SMALLINT,
+       "data" BYTEA NOT NULL
 );
+
+-- sqlite3-compatible version.
+
+-- CREATE TABLE pings(
+--        "timestamp" timestamp TEXT,
+--        icao VARCHAR(6),
+--        is_mlat BOOLEAN,
+--        signal_level SMALLINT,
+--        "type" SMALLINT,
+--        downlink_format SMALLINT,
+--        "data" BLOB
+-- );
+
+CREATE INDEX pings_icao_index ON pings(icao);
+CREATE INDEX pings_timestamp_index ON pings(timestamp);
+CREATE INDEX pings_type_index ON pings(type);
+CREATE INDEX pings_df_index ON pings(downlink_format);
+
+
+CREATE TABLE IF NOT EXISTS mode_s_reply_types(
+       code SMALLINT primary key,
+       description VARCHAR(30)
+);
+
+INSERT INTO mode_s_reply_types VALUES
+       (0, 'MODES_REPLY'),
+       (1, 'SHORT_ACAS'),
+       (2, 'ALTITUDE_REPLY'),
+       (3, 'IDENTIFY_REPLY'),
+       (4, 'ALL_CALL_REPLY'),
+       (5, 'LONG_ACAS'),
+       (6, 'EXTENDED_SQUITTER'),
+       (7, 'MILITARY_EXTENDED_SQUITTER'),
+       (8, 'COMM_B_ALTITUDE_REPLY'),
+       (9, 'COMM_B_IDENTIFY_REPLY'),
+       (10, 'COMM_D_ELM'),
+       (11, 'ADSB_AIRBORN_POSITION'),
+       (12, 'ADSB_SURFACE_POSITION'),
+       (13, 'ADSB_AIRSPEED'),
+       (14, 'ADSB_EMERGENCY'),
+       (15, 'ADSB_TCAS'),
+       (16, 'ADSB_VELOCITY'),
+       (17, 'ADSB_IDENTIFICATION'),
+       (18, 'ADSB_STATUS');
+
+
 
 CREATE TABLE IF NOT EXISTS sessions(
        id INTEGER PRIMARY KEY,
